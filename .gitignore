@@ -62,7 +62,7 @@ out-tsc/
 npm-debug.log*
 yarn-error.log*
 .nx/
-/src/Web/**/coverage/
+/src/app/**/coverage/
 playwright-report/
 test-results/
 

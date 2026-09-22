@@ -253,5 +253,6 @@ flowchart TB
 | Projeto | Conteúdo | Regra |
 |---|---|---|
 | `FluxoCaixa.SharedKernel` | `Entity`, `AggregateRoot`, `ValueObject`, `Result<T>`, `Error`, abstrações CQRS (`ICommand`, `IQuery`, handlers, `IDispatcher`), `ITenantContext`, `ITenantEntity`. | Sem dependências externas. |
+| `FluxoCaixa.Application.Common` | Implementação do `IDispatcher`, decorators de validação (FluentValidation) e logging, registro dos handlers via DI. | Referenciado pelas camadas Application; sem dependência de infraestrutura (EF, ASP.NET, broker). |
 | `FluxoCaixa.Contracts` | Eventos de integração versionados (`LancamentoRegistrado`, `TenantProvisionado`, `PlanoDoTenantAlterado`), todos com `TenantId`. | Só records imutáveis e serializáveis; nenhum comportamento. |
 | `FluxoCaixa.Infrastructure.Common` | Implementações transversais: middleware/filtro de tenant, interceptor EF, configuração de OpenTelemetry, autenticação JWT, ProblemDetails. | Referenciado apenas por Infrastructure e Api/Worker. |

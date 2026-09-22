@@ -27,12 +27,14 @@ Adotar essas versões sem avaliação cria **risco jurídico e de custo** para a
 | Dispatcher CQRS / pipeline | **Implementação própria** (~100 linhas: `ICommandHandler`, `IQueryHandler`, `IDispatcher` + decorators via DI) | Código do projeto | MediatR: licença comercial nas versões novas; a necessidade é simples |
 | Mapeamento de objetos | **Mapeamento manual** (métodos de extensão / construtores) | — | AutoMapper: licença comercial; mapeamento explícito é mais legível e seguro |
 | Validação | **FluentValidation** | Apache 2.0 | DataAnnotations: menos expressivo para regras compostas |
+| Versionamento de API / OpenAPI | **Asp.Versioning** (Mvc, ApiExplorer, OpenApi) + **Scalar.AspNetCore** | MIT | Swashbuckle: substituído pela geração OpenAPI nativa do .NET |
 | Mensageria | **MassTransit 8.x**, fixado em versão, atrás de uma abstração | Apache 2.0 | MassTransit 9 (comercial); RabbitMQ.Client puro (exigiria implementar outbox, retry e topologia à mão) |
 | Assertions em testes | **Shouldly** | BSD-3 | FluentAssertions 8 (comercial); a alternativa comunitária AwesomeAssertions também seria válida |
 | Mocks | **NSubstitute** | BSD-3 | Moq: controvérsia de privacidade (SponsorLink, 2023) |
-| Testes | **xUnit**, **Testcontainers**, **NetArchTest**, **Bogus**, **coverlet** | Apache 2.0 / MIT | — |
+| Testes | **xUnit v3**, **Testcontainers**, **NetArchTest**, **Bogus**, **Microsoft.Testing.Extensions.CodeCoverage** | Apache 2.0 / MIT | coverlet.collector: só funciona com VSTest (ver ADR-0012) |
 | Gateway | **YARP** | MIT | — |
-| Cache | **StackExchange.Redis** | MIT | — |
+| Cache | **StackExchange.Redis** (cliente) | MIT | — |
+| Servidor de cache | **Redis 8** (imagem oficial, usado sem modificação) | AGPLv3 (opção open source do Redis 8) | Redis 7.4–7.x: RSALv2/SSPL, não open source. **Valkey** (BSD, fork da Linux Foundation) é a alternativa compatível caso a AGPL seja restrição |
 | Resiliência | **Microsoft.Extensions.Resilience** (Polly v8) | BSD-3 | — |
 | Observabilidade | **OpenTelemetry .NET**, **Serilog** | Apache 2.0 | — |
 

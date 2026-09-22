@@ -1,0 +1,102 @@
+# Infraestrutura local da plataforma Fluxo de Caixa (SaaS).
+# Uso:  cd deploy && cp .env.example .env && docker compose up -d
+# Os serviços da aplicação (APIs, Worker, Gateway, SPA) são adicionados nas fases seguintes.
+
+name: fluxo-caixa
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  sqlserver:
+    <<: *restart
+    image: mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?defina MSSQL_SA_PASSWORD no deploy/.env}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  rabbitmq:
+    <<: *restart
+    image: rabbitmq:4.3-management-alpine
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?defina RABBITMQ_USER no deploy/.env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?defina RABBITMQ_PASSWORD no deploy/.env}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    <<: *restart
+    image: redis:8.8-alpine
+    # Somente cache: sem persistência em disco, com política de descarte LRU.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    <<: *restart
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?defina KEYCLOAK_ADMIN no deploy/.env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD no deploy/.env}
+      TENANTS_CLIENT_SECRET: ${TENANTS_CLIENT_SECRET:?defina TENANTS_CLIENT_SECRET no deploy/.env}
+      KC_HEALTH_ENABLED: "true"
+      # Emissor único (iss) para tokens obtidos pelo navegador e por containers;
+      # chamadas internas (JWKS) usam keycloak:8080 via backchannel dinâmico.
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-fluxo-caixa.json:/opt/keycloak/data/import/realm-fluxo-caixa.json:ro
+    healthcheck:
+      # A imagem não tem curl: requisição HTTP em bash puro na porta de gerenciamento (9000).
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r status <&3 && [[ \"$$status\" == *' 200 '* ]]"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  aspire-dashboard:
+    <<: *restart
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.5
+    environment:
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888" # UI
+      - "4317:18889"  # OTLP/gRPC
+
+volumes:
+  sqlserver-data:
+  rabbitmq-data:
+
+networks:
+  default:
+    name: fluxo-caixa

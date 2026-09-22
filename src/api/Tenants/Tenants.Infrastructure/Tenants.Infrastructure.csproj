@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tenants.Application\Tenants.Application.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
+  </ItemGroup>
+
+</Project>

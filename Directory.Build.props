@@ -25,9 +25,13 @@
     <Product>FluxoCaixa</Product>
   </PropertyGroup>
 
-  <!-- Projetos de teste -->
+  <!-- Projetos de teste (xUnit v3 sobre Microsoft Testing Platform) -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <Using Include="Xunit" />
+  </ItemGroup>
 </Project>

@@ -8,6 +8,7 @@
 |---|---|---|
 | **Unitários** | xUnit, NSubstitute, Shouldly, Bogus | Domínio (invariantes), Application (handlers, validators, verificação de quota), dispatcher e decorators. Rápidos, sem I/O. |
 | **Arquitetura** | NetArchTest | Regras de dependência da Clean Architecture; controllers sem acesso a Infrastructure; toda entidade de negócio implementa `ITenantEntity`. |
+| **Contrato** | xUnit + System.Text.Json | JSON dos eventos de integração igual ao publicado em `dominio.md`; mudança incompatível quebra o build antes de quebrar um consumidor. |
 | **Integração** | WebApplicationFactory, Testcontainers (SQL Server, RabbitMQ, Redis) | Endpoints de ponta a ponta no serviço, persistência, outbox, consumidor idempotente, cache, **isolamento entre tenants** e quota. |
 | **Frontend** | Test runner do Angular (unitários) | Services, componentes, interceptors, guards por papel. |
 | **Carga / stress** | k6 | SLO-03..SLO-06: 50 req/s no Consolidado com ≤ 5% de erro (tenants no plano Pro). |
@@ -29,6 +30,12 @@ Para cada serviço, com dois tenants (A e B) criados no teste:
 | Evento sem `tenantId` | Rejeitado (vai para a DLQ) |
 
 Uma falha nesses testes **bloqueia o merge e o deploy**.
+
+## Como os testes são executados
+
+- **Runner:** Microsoft Testing Platform (MTP), habilitado em `global.json`. Comando: `dotnet test`.
+- **Cobertura:** `Microsoft.Testing.Extensions.CodeCoverage` (`dotnet test -- --coverage`).
+- **Em container:** `scripts/test.ps1` (Windows) ou `scripts/test.sh` (Linux/macOS) executam build e testes no `mcr.microsoft.com/dotnet/sdk:10.0`, sem exigir o SDK .NET na máquina. É o mesmo ambiente do CI.
 
 ## TDD
 

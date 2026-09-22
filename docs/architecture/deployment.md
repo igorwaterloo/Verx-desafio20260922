@@ -13,7 +13,7 @@ flowchart TB
     subgraph host["Docker Desktop — rede bridge fluxo-caixa"]
         direction TB
         web["<b>web</b><br/>nginx:alpine<br/>:4200"]
-        kc["<b>keycloak</b><br/>quay.io/keycloak/keycloak<br/>:8081"]
+        kc["<b>keycloak</b><br/>keycloak:26.7<br/>:8081"]
         gw["<b>gateway</b><br/>.NET 10 + YARP<br/>:8080"]
 
         subgraph svc["Serviços"]
@@ -26,8 +26,8 @@ flowchart TB
 
         subgraph infra["Infraestrutura"]
             sql[("<b>sqlserver</b><br/>mssql/server:2022<br/>:1433<br/>TenantsDb · LancamentosDb<br/>ConsolidadoDb")]
-            mq{{"<b>rabbitmq</b><br/>rabbitmq:4-management<br/>:5672 · UI :15672"}}
-            redis[("<b>redis</b><br/>redis:7-alpine<br/>:6379")]
+            mq{{"<b>rabbitmq</b><br/>rabbitmq:4.3-management<br/>:5672 · UI :15672"}}
+            redis[("<b>redis</b><br/>redis:8.8-alpine<br/>:6379")]
             aspire["<b>aspire-dashboard</b><br/>UI :18888 · OTLP :4317"]
         end
     end
@@ -60,11 +60,11 @@ flowchart TB
 | `lancamentos-api` | .NET 10 (build) | 5101 (debug) | `/health/ready` | Também consome eventos de tenant/plano |
 | `consolidado-api-1/2` | .NET 10 (build) | — | `/health/ready` | Acesso **somente via gateway**; duas instâncias explícitas para demonstrar balanceamento e failover |
 | `consolidado-worker` | .NET 10 (build) | — | `/health/live` | |
-| `sqlserver` | mcr.microsoft.com/mssql/server:2022-latest | 1433 | `sqlcmd SELECT 1` | Um banco por serviço: `TenantsDb`, `LancamentosDb`, `ConsolidadoDb` |
-| `rabbitmq` | rabbitmq:4-management | 5672 / 15672 | `rabbitmq-diagnostics ping` | Definições (exchanges/filas) importadas no start |
-| `redis` | redis:7-alpine | 6379 | `redis-cli ping` | |
-| `keycloak` | quay.io/keycloak/keycloak | 8081 | `/health/ready` | Realm `fluxo-caixa` com Organizations habilitado, clientes (SPA, API, conta de serviço do Tenants.Api) e **dois tenants de demonstração** (Free e Pro), com usuários `admin` e `operador` |
-| `aspire-dashboard` | mcr.microsoft.com/dotnet/aspire-dashboard | 18888 / 4317 | — | Traces, métricas e logs |
+| `sqlserver` | mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04 | 1433 | `sqlcmd SELECT 1` | Um banco por serviço: `TenantsDb`, `LancamentosDb`, `ConsolidadoDb` |
+| `rabbitmq` | rabbitmq:4.3-management-alpine | 5672 / 15672 | `rabbitmq-diagnostics ping` | Exchanges e filas criadas pelo MassTransit na inicialização dos serviços |
+| `redis` | redis:8.8-alpine | 6379 | `redis-cli ping` | Somente cache: sem persistência, `maxmemory` 256 MB com LRU |
+| `keycloak` | quay.io/keycloak/keycloak:26.7.4 | 8081 | `/health/ready` | Realm `fluxo-caixa` com Organizations habilitado, clientes `fluxo-caixa-web` (SPA, PKCE), `fluxo-caixa-testes` (password grant, só local) e `fluxo-caixa-tenants` (conta de serviço do Tenants.Api) e **dois tenants de demonstração** (Free e Pro), com usuários `admin` e `operador` |
+| `aspire-dashboard` | mcr.microsoft.com/dotnet/aspire-dashboard:13.5 | 18888 / 4317 | — | Traces, métricas e logs |
 
 **Resiliência local:**
 - `restart: unless-stopped` em todos os serviços.

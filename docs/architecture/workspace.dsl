@@ -2,8 +2,11 @@
  * Modelo C4 — Fluxo de Caixa Diário (SaaS multi-tenant) — fonte formal da arquitetura
  *
  * Visualizar localmente (requer Docker):
- *   docker run -it --rm -p 8090:8080 -v "${PWD}/docs/architecture:/usr/local/structurizr" structurizr/lite
+ *   docker run -it --rm -p 8090:8080 -v "${PWD}/docs/architecture:/usr/local/structurizr" structurizr/structurizr local
  *   http://localhost:8090
+ *
+ * Validar:
+ *   docker run --rm -v "${PWD}/docs/architecture:/usr/local/structurizr" structurizr/structurizr validate -workspace /usr/local/structurizr/workspace.dsl
  *
  * Os diagramas em Mermaid (c4-*.md) são derivados deste modelo para renderização direta no GitHub.
  */
@@ -66,7 +69,7 @@ workspace "Fluxo de Caixa Diário (SaaS)" "Plataforma SaaS multi-tenant para con
                     invalidador = component "Invalidador de cache" "Remove as chaves do tenant/dia afetados após o commit." "Infrastructure / Redis"
                 }
                 consolidadoDb = container "ConsolidadoDb" "Projeção de saldos diários por tenant e inbox." "SQL Server 2022" "Database"
-                redis = container "Redis" "Cache de leitura do consolidado (chaves por tenant)." "Redis 7" "Cache"
+                redis = container "Redis" "Cache de leitura do consolidado (chaves por tenant)." "Redis 8" "Cache"
             }
 
             broker = container "RabbitMQ" "Transporte de eventos entre os contextos. Filas duráveis e DLQ." "RabbitMQ 4 (AMQP 0-9-1)" "Queue"
@@ -157,7 +160,7 @@ workspace "Fluxo de Caixa Diário (SaaS)" "Plataforma SaaS multi-tenant para con
                     deploymentNode "web" "Serve os arquivos estáticos da SPA" "nginx:alpine" {
                         containerInstance fluxoCaixa.spa
                     }
-                    deploymentNode "keycloak" "" "quay.io/keycloak/keycloak" {
+                    deploymentNode "keycloak" "" "quay.io/keycloak/keycloak:26.7.4" {
                         softwareSystemInstance keycloak
                     }
                     deploymentNode "gateway" "" "container .NET 10" {
@@ -175,18 +178,18 @@ workspace "Fluxo de Caixa Diário (SaaS)" "Plataforma SaaS multi-tenant para con
                     deploymentNode "consolidado-worker" "" "container .NET 10" {
                         containerInstance fluxoCaixa.consolidadoWorker
                     }
-                    deploymentNode "sqlserver" "" "mcr.microsoft.com/mssql/server:2022-latest" {
+                    deploymentNode "sqlserver" "" "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04" {
                         containerInstance fluxoCaixa.tenantsDb
                         containerInstance fluxoCaixa.lancamentosDb
                         containerInstance fluxoCaixa.consolidadoDb
                     }
-                    deploymentNode "rabbitmq" "" "rabbitmq:4-management" {
+                    deploymentNode "rabbitmq" "" "rabbitmq:4.3-management-alpine" {
                         containerInstance fluxoCaixa.broker
                     }
-                    deploymentNode "redis" "" "redis:7-alpine" {
+                    deploymentNode "redis" "" "redis:8.8-alpine" {
                         containerInstance fluxoCaixa.redis
                     }
-                    deploymentNode "aspire-dashboard" "" "mcr.microsoft.com/dotnet/aspire-dashboard" {
+                    deploymentNode "aspire-dashboard" "" "mcr.microsoft.com/dotnet/aspire-dashboard:13.5" {
                         containerInstance fluxoCaixa.observabilidade
                     }
                 }
