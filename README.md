@@ -25,7 +25,29 @@ Solução para um comerciante controlar o fluxo de caixa diário: **lançamentos
 
 Microsserviços por bounded context com comunicação assíncrona orientada a eventos (RabbitMQ + Transactional Outbox), Clean Architecture + CQRS em cada serviço, cache Redis na leitura do consolidado e API Gateway (YARP).
 
-Diagramas C4 e decisões arquiteturais (ADRs): _em breve em [`docs/`](docs/)_.
+```mermaid
+flowchart LR
+    spa["Web App<br/>(Angular)"] --> gw["API Gateway<br/>(YARP)"]
+    gw --> lapi["Lancamentos.Api"]
+    gw --> capi["Consolidado.Api ×2"]
+    lapi --> ldb[("LancamentosDb")]
+    lapi -- "outbox → evento" --> mq{{"RabbitMQ"}}
+    mq --> wk["Consolidado.Worker"]
+    wk --> cdb[("ConsolidadoDb")]
+    wk -- "invalida" --> redis[("Redis")]
+    capi --> redis
+    capi --> cdb
+```
+
+| Visão | Documento |
+|---|---|
+| Domínio | [Modelo de domínio](docs/dominio.md) |
+| C4 — Contexto | [Nível 1](docs/architecture/c4-1-contexto.md) |
+| C4 — Containers | [Nível 2](docs/architecture/c4-2-containers.md) |
+| C4 — Componentes | [Nível 3](docs/architecture/c4-3-componentes.md) |
+| Fluxos e cenários de falha | [Diagramas de sequência](docs/architecture/fluxos.md) |
+| Implantação | [Local e produção](docs/architecture/deployment.md) |
+| Requisitos não funcionais | [SLOs e metas](docs/requisitos-nao-funcionais.md) |
 
 ## Stack
 
@@ -55,12 +77,12 @@ _Em breve._
 _Em breve._
 
 ## Documentação
-_Em breve em [`docs/`](docs/)._
+Índice completo: [`docs/README.md`](docs/README.md).
 
 ## Roadmap
 
 - [x] Fase 0 — Setup do repositório
-- [ ] Fase 1 — Diagramas C4 e definição de arquitetura
+- [x] Fase 1 — Diagramas C4 e definição de arquitetura
 - [ ] Fase 2 — ADRs
 - [ ] Fase 3 — Estrutura da solução
 - [ ] Fase 4 — Serviço de Lançamentos
