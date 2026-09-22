@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="MassTransit" />
     <PackageReference Include="Asp.Versioning.Mvc" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Asp.Versioning.OpenApi" />
@@ -14,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FluxoCaixa.SharedKernel\FluxoCaixa.SharedKernel.csproj" />
+    <ProjectReference Include="..\FluxoCaixa.Contracts\FluxoCaixa.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
