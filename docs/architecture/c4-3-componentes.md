@@ -108,7 +108,7 @@ flowchart TB
     broker{{"<b>RabbitMQ</b>"}}
 
     subgraph lapi["Lancamentos.Api [Container]"]
-        ctrl["<b>LancamentosController</b><br/><i>[Controllers]</i><br/>Filtros: tenant, Idempotency-Key<br/>ProblemDetails"]
+        ctrl["<b>LancamentosController</b><br/><i>[Controllers]</i><br/>Idempotency-Key → command<br/>ProblemDetails"]
         tctx["<b>Tenant Context</b><br/><i>[Infrastructure]</i><br/>TenantId, usuário, roles"]
         dispatcher["<b>Dispatcher CQRS</b><br/><i>[Application]</i><br/>Decorators: validação,<br/>logging, métricas"]
         cmd["<b>Command Handlers</b><br/><i>[Application]</i><br/>RegistrarLancamento (quota)<br/>EstornarLancamento"]
@@ -147,7 +147,7 @@ flowchart TB
 
 | Componente | Responsabilidade | Padrões |
 |---|---|---|
-| LancamentosController | Traduz HTTP para commands/queries; aplica `Idempotency-Key` (escopo tenant); mapeia `Result` para status HTTP/ProblemDetails (RFC 9457); políticas `Operador`/`Admin` (RN-10). | Controllers finos, Adapter |
+| LancamentosController | Traduz HTTP para commands/queries; repassa o header `Idempotency-Key` ao command (a chave é gravada na mesma transação do lançamento, escopo tenant); mapeia `Result` para status HTTP/ProblemDetails (RFC 9457); políticas `Operador`/`Admin` (RN-10). | Controllers finos, Adapter |
 | Tenant Context | Identidade da execução (MT-02). | Context Object |
 | Dispatcher CQRS | Resolve `ICommandHandler<TCommand, TResult>` e `IQueryHandler<TQuery, TResult>` via DI; encadeia os decorators. | Mediator, Decorator |
 | Command Handlers | Carregam o agregado, verificam a **quota** (RN-09), executam a regra, persistem e registram o evento. | Unit of Work, Result pattern |

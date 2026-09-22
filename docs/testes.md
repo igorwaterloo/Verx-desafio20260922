@@ -41,6 +41,29 @@ Uma falha nesses testes **bloqueia o merge e o deploy**.
 
 As regras de negócio seguem **vermelho → verde → refatorar**: o teste que descreve a regra (ex.: RN-05, "um lançamento só pode ser estornado uma vez"; RN-09, "quota do plano") é escrito antes da implementação.
 
-## Resultados
+## Situação atual das suítes
+
+| Suíte | Testes | Destaques |
+|---|---|---|
+| Arquitetura | 20 | Camadas, contextos isolados, building blocks sem dependências, `ITenantEntity` |
+| SharedKernel / Application.Common / Infrastructure.Common / Contracts | 51 | Result, primitivas de domínio, dispatcher e decorators, isolamento de tenant no EF Core, contratos JSON |
+| Lançamentos — domínio | 30 | RN-01 a RN-06, borda de fuso (23h30 em São Paulo = dia seguinte em UTC), projeção do plano |
+| Lançamentos — aplicação | 21 | Quota RN-09 (mês em São Paulo, padrão Free), idempotência inclusive em corrida, estorno RN-10 |
+| Lançamentos — integração | 12 | Outbox → RabbitMQ, 400/401/403/404/409/422, isolamento entre tenants, quota alimentada por evento, **POST com o RabbitMQ pausado retorna 201 e o evento é entregue quando o broker volta (RNF-01)** |
+
+### Cenários de integração de Lançamentos
+
+| Cenário | Resultado esperado |
+|---|---|
+| Registrar válido | 201 + `Location`; evento `LancamentoRegistrado` recebido no broker |
+| Validação de campos / regra de domínio | 400 com erros por campo / `codigo` estável |
+| Sem autenticação / sem `tenant_id` | 401 / 403 |
+| Mesma `Idempotency-Key` duas vezes | Mesmo lançamento, sem duplicidade |
+| Tenant B acessa dados do tenant A | 404 em consulta e estorno; listagem vazia |
+| Estorno por operador / admin / segundo estorno | 403 / 201 + evento com tipo inverso / 409 |
+| Plano com limite 2 publicado por evento | 3º lançamento do mês retorna 422 |
+| RabbitMQ pausado durante o registro | 201; evento entregue após o broker voltar |
+
+## Resultados de carga
 
 _Serão registrados na Fase 8._

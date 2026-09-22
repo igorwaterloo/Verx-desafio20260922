@@ -57,7 +57,7 @@ flowchart TB
 | `web` | nginx:alpine (build multi-stage) | 4200 | `GET /` | SPA |
 | `gateway` | .NET 10 (build) | 8080 | `/health/ready` | Única porta de API exposta para a SPA |
 | `tenants-api` | .NET 10 (build) | 5301 (debug) | `/health/ready` | Onboarding, planos, usuários; usa a Admin API do Keycloak |
-| `lancamentos-api` | .NET 10 (build) | 5101 (debug) | `/health/ready` | Também consome eventos de tenant/plano |
+| `lancamentos-api` | `src/api/Dockerfile` (aspnet:10.0, usuário não-root) | 5101 | `/health/ready` (SQL Server + RabbitMQ) | Aplica as migrations na inicialização; consome eventos de tenant/plano; valida JWT com JWKS pelo endereço interno do Keycloak |
 | `consolidado-api-1/2` | .NET 10 (build) | — | `/health/ready` | Acesso **somente via gateway**; duas instâncias explícitas para demonstrar balanceamento e failover |
 | `consolidado-worker` | .NET 10 (build) | — | `/health/live` | |
 | `sqlserver` | mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04 | 1433 | `sqlcmd SELECT 1` | Um banco por serviço: `TenantsDb`, `LancamentosDb`, `ConsolidadoDb` |
