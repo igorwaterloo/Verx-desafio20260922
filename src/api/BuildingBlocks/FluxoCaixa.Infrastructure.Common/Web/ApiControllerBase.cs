@@ -9,7 +9,6 @@ namespace FluxoCaixa.Infrastructure.Common.Web;
 /// com o status HTTP correspondente e o código estável do erro em <c>codigo</c>.
 /// </summary>
 [ApiController]
-[Produces("application/json")]
 public abstract class ApiControllerBase : ControllerBase
 {
     protected ObjectResult Problema(Error error)
