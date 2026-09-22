@@ -9,7 +9,7 @@ namespace FluxoCaixa.Infrastructure.Common.Web;
 
 /// <summary>
 /// Configuração padrão das Web APIs da plataforma: controllers, versionamento na URL,
-/// ProblemDetails (RFC 9457), OpenAPI/Scalar e health checks (ADR-0016).
+/// ProblemDetails (RFC 9457), OpenAPI/Scalar, health checks (ADR-0016) e resolução de tenant (ADR-0015).
 /// </summary>
 public static class WebApiDefaults
 {
@@ -35,6 +35,7 @@ public static class WebApiDefaults
             .AddOpenApi();
 
         services.AddHealthChecks();
+        services.AddTenancy();
 
         return services;
     }
@@ -59,6 +60,9 @@ public static class WebApiDefaults
         // Liveness: só o processo. Readiness: inclui as dependências registradas por cada serviço.
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
         app.MapHealthChecks("/health/ready");
+
+        // Autenticação/autorização entram na Fase 4; o tenant é resolvido logo após a autenticação.
+        app.UseTenancy();
         app.MapControllers();
 
         return app;
