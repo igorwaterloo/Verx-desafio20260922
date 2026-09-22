@@ -41,5 +41,8 @@
     <Project Path="tests/Lancamentos.Application.UnitTests/Lancamentos.Application.UnitTests.csproj" />
     <Project Path="tests/Lancamentos.Domain.UnitTests/Lancamentos.Domain.UnitTests.csproj" />
     <Project Path="tests/Lancamentos.IntegrationTests/Lancamentos.IntegrationTests.csproj" />
+    <Project Path="tests/Tenants.Application.UnitTests/Tenants.Application.UnitTests.csproj" />
+    <Project Path="tests/Tenants.Domain.UnitTests/Tenants.Domain.UnitTests.csproj" />
+    <Project Path="tests/Tenants.IntegrationTests/Tenants.IntegrationTests.csproj" />
   </Folder>
 </Solution>
