@@ -16,23 +16,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\BuildingBlocks\FluxoCaixa.SharedKernel\FluxoCaixa.SharedKernel.csproj" />
-    <ProjectReference Include="..\..\src\BuildingBlocks\FluxoCaixa.Contracts\FluxoCaixa.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\BuildingBlocks\FluxoCaixa.Application.Common\FluxoCaixa.Application.Common.csproj" />
-    <ProjectReference Include="..\..\src\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
-    <ProjectReference Include="..\..\src\Services\Tenants\Tenants.Domain\Tenants.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Services\Tenants\Tenants.Application\Tenants.Application.csproj" />
-    <ProjectReference Include="..\..\src\Services\Tenants\Tenants.Infrastructure\Tenants.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Services\Tenants\Tenants.Api\Tenants.Api.csproj" />
-    <ProjectReference Include="..\..\src\Services\Lancamentos\Lancamentos.Domain\Lancamentos.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Services\Lancamentos\Lancamentos.Application\Lancamentos.Application.csproj" />
-    <ProjectReference Include="..\..\src\Services\Lancamentos\Lancamentos.Infrastructure\Lancamentos.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Services\Lancamentos\Lancamentos.Api\Lancamentos.Api.csproj" />
-    <ProjectReference Include="..\..\src\Services\Consolidado\Consolidado.Domain\Consolidado.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Services\Consolidado\Consolidado.Application\Consolidado.Application.csproj" />
-    <ProjectReference Include="..\..\src\Services\Consolidado\Consolidado.Infrastructure\Consolidado.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Services\Consolidado\Consolidado.Api\Consolidado.Api.csproj" />
-    <ProjectReference Include="..\..\src\Services\Consolidado\Consolidado.Worker\Consolidado.Worker.csproj" />
+    <ProjectReference Include="..\..\src\api\BuildingBlocks\FluxoCaixa.SharedKernel\FluxoCaixa.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\api\BuildingBlocks\FluxoCaixa.Contracts\FluxoCaixa.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\api\BuildingBlocks\FluxoCaixa.Application.Common\FluxoCaixa.Application.Common.csproj" />
+    <ProjectReference Include="..\..\src\api\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
+    <ProjectReference Include="..\..\src\api\Tenants\Tenants.Domain\Tenants.Domain.csproj" />
+    <ProjectReference Include="..\..\src\api\Tenants\Tenants.Application\Tenants.Application.csproj" />
+    <ProjectReference Include="..\..\src\api\Tenants\Tenants.Infrastructure\Tenants.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\api\Tenants\Tenants.Api\Tenants.Api.csproj" />
+    <ProjectReference Include="..\..\src\api\Lancamentos\Lancamentos.Domain\Lancamentos.Domain.csproj" />
+    <ProjectReference Include="..\..\src\api\Lancamentos\Lancamentos.Application\Lancamentos.Application.csproj" />
+    <ProjectReference Include="..\..\src\api\Lancamentos\Lancamentos.Infrastructure\Lancamentos.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\api\Lancamentos\Lancamentos.Api\Lancamentos.Api.csproj" />
+    <ProjectReference Include="..\..\src\api\Consolidado\Consolidado.Domain\Consolidado.Domain.csproj" />
+    <ProjectReference Include="..\..\src\api\Consolidado\Consolidado.Application\Consolidado.Application.csproj" />
+    <ProjectReference Include="..\..\src\api\Consolidado\Consolidado.Infrastructure\Consolidado.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\api\Consolidado\Consolidado.Api\Consolidado.Api.csproj" />
+    <ProjectReference Include="..\..\src\api\Consolidado\Consolidado.Worker\Consolidado.Worker.csproj" />
   </ItemGroup>
 
 </Project>

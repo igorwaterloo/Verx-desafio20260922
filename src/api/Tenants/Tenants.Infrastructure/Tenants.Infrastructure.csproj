@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Tenants.Application\Tenants.Application.csproj" />
-    <ProjectReference Include="..\..\..\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
   </ItemGroup>
 
 </Project>

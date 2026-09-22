@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
+    <ProjectReference Include="..\..\src\api\BuildingBlocks\FluxoCaixa.Infrastructure.Common\FluxoCaixa.Infrastructure.Common.csproj" />
   </ItemGroup>
 
 </Project>

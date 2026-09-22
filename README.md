@@ -8,6 +8,7 @@ Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa 
 - [Visão geral](#visão-geral)
 - [Arquitetura](#arquitetura)
 - [Stack](#stack)
+- [Estrutura do repositório](#estrutura-do-repositório)
 - [Como executar localmente](#como-executar-localmente)
 - [Testes](#testes)
 - [Documentação](#documentação)
@@ -74,6 +75,38 @@ flowchart LR
 | Gateway | YARP |
 | Testes | xUnit, NSubstitute, Shouldly, Testcontainers, NetArchTest, k6 |
 | Infra local | Docker Compose |
+
+## Estrutura do repositório
+
+O repositório tem três blocos: **app** (frontend), **api** (backend) e **tests**.
+
+```
+├─ src/
+│  ├─ app/                         ← Frontend Angular (SPA)
+│  └─ api/                         ← Backend .NET 10 (C#)
+│     ├─ BuildingBlocks/           ← código compartilhado entre os serviços
+│     │  ├─ FluxoCaixa.SharedKernel          (Result, Entity, abstrações CQRS e de tenant — sem dependências)
+│     │  ├─ FluxoCaixa.Contracts             (eventos de integração versionados)
+│     │  ├─ FluxoCaixa.Application.Common    (dispatcher CQRS, decorators de validação/log)
+│     │  └─ FluxoCaixa.Infrastructure.Common (padrões de Web API, EF Core multi-tenant)
+│     ├─ Gateway/FluxoCaixa.Gateway          (YARP)
+│     ├─ Tenants/                  ← serviço (contexto Plataforma)
+│     ├─ Lancamentos/              ← serviço (contexto Lançamentos)
+│     └─ Consolidado/              ← serviço (contexto Consolidado) + Worker
+├─ tests/                          ← testes unitários, de arquitetura e de integração (k6 em tests/stress)
+├─ docs/                           ← C4, ADRs, domínio, requisitos não funcionais
+└─ FluxoCaixa.slnx                 ← solução .NET
+```
+
+**Por que cada serviço tem vários projetos?** Cada serviço segue a **Clean Architecture** ([ADR-0003](docs/adr/0003-clean-architecture-cqrs.md)), com uma camada por projeto `.csproj`, e as dependências apontam só para dentro:
+
+```
+<Serviço>.Api  ──►  <Serviço>.Infrastructure  ──►  <Serviço>.Application  ──►  <Serviço>.Domain
+(controllers,       (EF Core, RabbitMQ,           (casos de uso,              (regras de negócio,
+ executável)         Redis, Keycloak)              CQRS, portas)               sem frameworks)
+```
+
+Separar as camadas em projetos faz o **compilador** impedir dependências proibidas (ex.: o `Domain` não consegue usar o EF Core porque não tem essa referência). Os testes em `tests/Architecture.Tests` completam essas regras.
 
 ## Como executar localmente
 
