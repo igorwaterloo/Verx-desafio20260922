@@ -1,0 +1,59 @@
+# ADR-0013: Escolha de bibliotecas considerando licenciamento
+
+- **Status:** Aceita
+- **Data:** 2026-09-22
+- **Decisores:** Igor Waterloo
+- **Relacionadas:** [ADR-0003](0003-clean-architecture-cqrs.md), [ADR-0004](0004-comunicacao-assincrona-rabbitmq.md), [ADR-0012](0012-estrategia-de-testes.md)
+
+## Contexto e problema
+
+Entre 2025 e 2026, várias bibliotecas populares do ecossistema .NET **mudaram para licenças comerciais** em suas novas versões principais:
+- **MediatR** e **AutoMapper** (a partir das versões lançadas em 2025);
+- **FluentAssertions** (a partir da v8);
+- **MassTransit** (a partir da v9; a v8 continua open source, Apache 2.0).
+
+Adotar essas versões sem avaliação cria **risco jurídico e de custo** para a empresa. Escolher bibliotecas é uma decisão de arquitetura, não só de conveniência.
+
+## Requisitos da decisão
+
+- Licenças permissivas (MIT / Apache 2.0) ou custo explicitamente aceito.
+- Baixo acoplamento à biblioteca (trocar sem reescrever o domínio).
+- Manutenção ativa e compatibilidade com .NET 10.
+
+## Decisão
+
+| Necessidade | Escolha | Licença | Alternativa descartada e motivo |
+|---|---|---|---|
+| Dispatcher CQRS / pipeline | **Implementação própria** (~100 linhas: `ICommandHandler`, `IQueryHandler`, `IDispatcher` + decorators via DI) | Código do projeto | MediatR: licença comercial nas versões novas; a necessidade é simples |
+| Mapeamento de objetos | **Mapeamento manual** (métodos de extensão / construtores) | — | AutoMapper: licença comercial; mapeamento explícito é mais legível e seguro |
+| Validação | **FluentValidation** | Apache 2.0 | DataAnnotations: menos expressivo para regras compostas |
+| Mensageria | **MassTransit 8.x**, fixado em versão, atrás de uma abstração | Apache 2.0 | MassTransit 9 (comercial); RabbitMQ.Client puro (exigiria implementar outbox, retry e topologia à mão) |
+| Assertions em testes | **Shouldly** | BSD-3 | FluentAssertions 8 (comercial); a alternativa comunitária AwesomeAssertions também seria válida |
+| Mocks | **NSubstitute** | BSD-3 | Moq: controvérsia de privacidade (SponsorLink, 2023) |
+| Testes | **xUnit**, **Testcontainers**, **NetArchTest**, **Bogus**, **coverlet** | Apache 2.0 / MIT | — |
+| Gateway | **YARP** | MIT | — |
+| Cache | **StackExchange.Redis** | MIT | — |
+| Resiliência | **Microsoft.Extensions.Resilience** (Polly v8) | BSD-3 | — |
+| Observabilidade | **OpenTelemetry .NET**, **Serilog** | Apache 2.0 | — |
+
+**Isolamento do MassTransit:** a Application publica via uma porta própria (`IEventPublisher`), e o consumer é um adaptador fino que chama o command handler. Se a v8 deixar de ser suportada, as saídas são migrar para a v9 comercial, para **Wolverine** ou para **RabbitMQ.Client** com o outbox próprio, **sem tocar em Domain e Application**.
+
+**Controle:** as versões ficam centralizadas em `Directory.Packages.props` (Central Package Management) e são revisadas a cada atualização.
+
+## Consequências
+
+### Positivas
+- Nenhum custo de licença nem risco jurídico.
+- Dispatcher próprio sem mágica: fácil de entender, depurar e testar.
+- Dependências externas isoladas atrás de portas (Clean Architecture).
+
+### Negativas / trade-offs aceitos
+- Código próprio para manter (dispatcher e decorators).
+- A MassTransit 8.x tem horizonte de suporte limitado.
+
+### Mitigações
+- O dispatcher é pequeno e coberto por testes unitários.
+- Monitorar o fim de suporte da MassTransit 8 e registrar um novo ADR na migração.
+
+## Referências
+- Anúncios oficiais de licenciamento de MediatR/AutoMapper (2025), FluentAssertions 8 (2025) e MassTransit v9.
