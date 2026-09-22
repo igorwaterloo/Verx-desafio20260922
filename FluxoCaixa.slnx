@@ -1,0 +1,32 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/FluxoCaixa.Application.Common/FluxoCaixa.Application.Common.csproj" />
+    <Project Path="src/BuildingBlocks/FluxoCaixa.Contracts/FluxoCaixa.Contracts.csproj" />
+    <Project Path="src/BuildingBlocks/FluxoCaixa.Infrastructure.Common/FluxoCaixa.Infrastructure.Common.csproj" />
+    <Project Path="src/BuildingBlocks/FluxoCaixa.SharedKernel/FluxoCaixa.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/FluxoCaixa.Gateway/FluxoCaixa.Gateway.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Consolidado/">
+    <Project Path="src/Services/Consolidado/Consolidado.Api/Consolidado.Api.csproj" />
+    <Project Path="src/Services/Consolidado/Consolidado.Application/Consolidado.Application.csproj" />
+    <Project Path="src/Services/Consolidado/Consolidado.Domain/Consolidado.Domain.csproj" />
+    <Project Path="src/Services/Consolidado/Consolidado.Infrastructure/Consolidado.Infrastructure.csproj" />
+    <Project Path="src/Services/Consolidado/Consolidado.Worker/Consolidado.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Lancamentos/">
+    <Project Path="src/Services/Lancamentos/Lancamentos.Api/Lancamentos.Api.csproj" />
+    <Project Path="src/Services/Lancamentos/Lancamentos.Application/Lancamentos.Application.csproj" />
+    <Project Path="src/Services/Lancamentos/Lancamentos.Domain/Lancamentos.Domain.csproj" />
+    <Project Path="src/Services/Lancamentos/Lancamentos.Infrastructure/Lancamentos.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Tenants/">
+    <Project Path="src/Services/Tenants/Tenants.Api/Tenants.Api.csproj" />
+    <Project Path="src/Services/Tenants/Tenants.Application/Tenants.Application.csproj" />
+    <Project Path="src/Services/Tenants/Tenants.Domain/Tenants.Domain.csproj" />
+    <Project Path="src/Services/Tenants/Tenants.Infrastructure/Tenants.Infrastructure.csproj" />
+  </Folder>
+</Solution>
