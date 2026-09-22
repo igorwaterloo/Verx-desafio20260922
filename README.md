@@ -48,6 +48,7 @@ flowchart LR
 | Fluxos e cenários de falha | [Diagramas de sequência](docs/architecture/fluxos.md) |
 | Implantação | [Local e produção](docs/architecture/deployment.md) |
 | Requisitos não funcionais | [SLOs e metas](docs/requisitos-nao-funcionais.md) |
+| Decisões arquiteturais | [ADRs](docs/adr/README.md) |
 
 ## Stack
 
@@ -83,7 +84,7 @@ _Em breve._
 
 - [x] Fase 0 — Setup do repositório
 - [x] Fase 1 — Diagramas C4 e definição de arquitetura
-- [ ] Fase 2 — ADRs
+- [x] Fase 2 — ADRs
 - [ ] Fase 3 — Estrutura da solução
 - [ ] Fase 4 — Serviço de Lançamentos
 - [ ] Fase 5 — Serviço de Consolidado

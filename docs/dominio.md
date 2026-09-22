@@ -38,7 +38,7 @@ flowchart LR
 | **Lançamentos** | Core domain | Registrar e consultar lançamentos; garantir as regras de negócio. **Fonte da verdade.** | `LancamentosDb` |
 | **Consolidado** | Supporting domain | Manter uma **projeção** de saldos por dia, otimizada para leitura. | `ConsolidadoDb` |
 
-**Relação entre os contextos:** o Consolidado é *downstream* e *conformista* ao evento publicado por Lançamentos (Published Language: `FluxoCaixa.Contracts`). **Lançamentos não conhece o Consolidado**, e esse desacoplamento garante o requisito de disponibilidade.
+**Relação entre os contextos** ([ADR-0002](adr/0002-microsservicos-por-bounded-context.md), [ADR-0004](adr/0004-comunicacao-assincrona-rabbitmq.md)): o Consolidado é *downstream* e *conformista* ao evento publicado por Lançamentos (Published Language: `FluxoCaixa.Contracts`). **Lançamentos não conhece o Consolidado**, e esse desacoplamento garante o requisito de disponibilidade.
 
 ## 4. Contexto Lançamentos
 
@@ -69,7 +69,7 @@ flowchart LR
 | RN-07 | Um comerciante só acessa os próprios lançamentos. |
 | RN-08 | O registro de um lançamento é **idempotente** pela chave `Idempotency-Key` enviada pelo cliente, o que evita duplicidade em retentativas. |
 
-> **Decisão de modelagem (RN-04):** o estorno usa a data de competência do lançamento original porque o objetivo é corrigir o caixa daquele dia. Em uma evolução com **fechamento de caixa**, estornos de dias já fechados passariam a ser lançados na data corrente (ver [evolução futura](evolucao-futura.md)).
+> **Decisão de modelagem (RN-04, [ADR-0014](adr/0014-lancamentos-imutaveis-com-estorno.md)):** o estorno usa a data de competência do lançamento original porque o objetivo é corrigir o caixa daquele dia. Em uma evolução com **fechamento de caixa**, estornos de dias já fechados passariam a ser lançados na data corrente (ver [evolução futura](evolucao-futura.md)).
 
 ### 4.3 Casos de uso (CQRS)
 

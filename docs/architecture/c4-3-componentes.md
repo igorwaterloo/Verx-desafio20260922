@@ -22,7 +22,7 @@ flowchart LR
 | **Infrastructure** | Application, Domain | Api |
 | **Api / Worker** | Todas (composition root) | — |
 
-Essas regras são **verificadas automaticamente** por testes de arquitetura (NetArchTest) em `tests/Architecture.Tests`.
+Essas regras são **verificadas automaticamente** por testes de arquitetura (NetArchTest) em `tests/Architecture.Tests`. Decisão: [ADR-0003](../adr/0003-clean-architecture-cqrs.md). Bibliotecas: [ADR-0013](../adr/0013-bibliotecas-e-licencas.md).
 
 ---
 
