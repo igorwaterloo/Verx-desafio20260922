@@ -34,5 +34,5 @@ flowchart LR
 
 ## Decisões refletidas neste nível
 
-- **A identidade é delegada a um IdP padrão de mercado** em vez de autenticação própria: menos superfície de ataque e suporte a MFA, SSO e federação sem código novo. Ver ADR de autenticação em [`docs/adr`](../adr).
+- **A identidade é delegada a um IdP padrão de mercado** em vez de autenticação própria: menos superfície de ataque e suporte a MFA, SSO e federação sem código novo. Ver [ADR-0008](../adr/0008-autenticacao-keycloak-oidc-jwt.md).
 - **O escopo é um único comerciante por usuário**, mas os dados já são particionados por `ComercianteId`, o que prepara o sistema para multi-tenant.

@@ -93,3 +93,16 @@ flowchart LR
 3. **Segurança:** JWT validado no gateway **e** nos serviços (defesa em profundidade), TLS na borda, segredos fora do repositório, `ComercianteId` extraído do token.
 
 Detalhes e metas numéricas: [requisitos não funcionais](../requisitos-nao-funcionais.md). Comportamento em falhas: [fluxos](fluxos.md).
+
+## Decisões relacionadas
+
+| Container / aspecto | ADR |
+|---|---|
+| Separação em serviços | [ADR-0002](../adr/0002-microsservicos-por-bounded-context.md) |
+| RabbitMQ | [ADR-0004](../adr/0004-comunicacao-assincrona-rabbitmq.md), [ADR-0005](../adr/0005-outbox-e-consumidor-idempotente.md) |
+| Redis | [ADR-0006](../adr/0006-cache-aside-redis.md) |
+| SQL Server (LancamentosDb / ConsolidadoDb) | [ADR-0007](../adr/0007-sql-server-ef-core-database-per-service.md) |
+| Keycloak | [ADR-0008](../adr/0008-autenticacao-keycloak-oidc-jwt.md) |
+| API Gateway | [ADR-0009](../adr/0009-api-gateway-yarp.md) |
+| Consolidado.Api × Consolidado.Worker | [ADR-0010](../adr/0010-separacao-consolidado-api-worker.md) |
+| Aspire Dashboard / OpenTelemetry | [ADR-0011](../adr/0011-observabilidade-opentelemetry.md) |

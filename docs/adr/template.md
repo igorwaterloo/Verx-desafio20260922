@@ -1,6 +1,6 @@
 # ADR-NNNN: Título curto no imperativo
 
-- **Status:** Proposta | Aceita | Rejeitada | Substituída por [ADR-XXXX](XXXX-titulo.md)
+- **Status:** Proposta | Aceita | Rejeitada | Substituída por ADR-XXXX
 - **Data:** AAAA-MM-DD
 - **Decisores:** 
 - **Relacionadas:** 
