@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    Central Package Management: todas as versões de pacotes NuGet ficam aqui.
+    Os .csproj referenciam pacotes sem versão (<PackageReference Include="..." />).
+    Os pacotes são adicionados conforme cada fase do projeto os introduz.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Aplicação">
+  </ItemGroup>
+
+  <ItemGroup Label="Testes">
+  </ItemGroup>
+</Project>
