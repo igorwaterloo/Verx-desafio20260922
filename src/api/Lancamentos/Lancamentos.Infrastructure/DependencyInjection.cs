@@ -46,19 +46,7 @@ public static class DependencyInjection
 
             bus.UsingRabbitMq((context, rabbit) =>
             {
-                var opcoes = configuration.GetSection("RabbitMq");
-                rabbit.Host(
-                    opcoes["Host"] ?? "localhost",
-                    ushort.TryParse(opcoes["Porta"], out var porta) ? porta : (ushort)5672,
-                    opcoes["VirtualHost"] ?? "/",
-                    host =>
-                    {
-                        host.Username(opcoes["Usuario"] ?? "guest");
-                        host.Password(opcoes["Senha"] ?? "guest");
-                    });
-
-                rabbit.UseConsumeFilter(typeof(TenantConsumeFilter<>), context);
-                rabbit.UseMessageRetry(retry => retry.Exponential(5, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(2)));
+                rabbit.ConfigurarPadrao(context, configuration);
                 rabbit.ConfigureEndpoints(context);
             });
         });
