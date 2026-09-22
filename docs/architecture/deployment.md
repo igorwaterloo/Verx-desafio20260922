@@ -17,6 +17,7 @@ flowchart TB
         gw["<b>gateway</b><br/>.NET 10 + YARP<br/>:8080"]
 
         subgraph svc["Serviços"]
+            tapi["<b>tenants-api</b><br/>.NET 10<br/>:5301"]
             lapi["<b>lancamentos-api</b><br/>.NET 10<br/>:5101"]
             capi1["<b>consolidado-api-1</b><br/>.NET 10"]
             capi2["<b>consolidado-api-2</b><br/>.NET 10"]
@@ -24,7 +25,7 @@ flowchart TB
         end
 
         subgraph infra["Infraestrutura"]
-            sql[("<b>sqlserver</b><br/>mssql/server:2022<br/>:1433<br/>LancamentosDb · ConsolidadoDb")]
+            sql[("<b>sqlserver</b><br/>mssql/server:2022<br/>:1433<br/>TenantsDb · LancamentosDb<br/>ConsolidadoDb")]
             mq{{"<b>rabbitmq</b><br/>rabbitmq:4-management<br/>:5672 · UI :15672"}}
             redis[("<b>redis</b><br/>redis:7-alpine<br/>:6379")]
             aspire["<b>aspire-dashboard</b><br/>UI :18888 · OTLP :4317"]
@@ -34,7 +35,12 @@ flowchart TB
     browser --> web
     browser --> kc
     browser --> gw
+    gw --> tapi
     gw --> lapi
+    tapi --> sql
+    tapi --> mq
+    tapi --> kc
+    mq --> lapi
     gw --> capi1
     gw --> capi2
     lapi --> sql
@@ -50,13 +56,14 @@ flowchart TB
 |---|---|---|---|---|
 | `web` | nginx:alpine (build multi-stage) | 4200 | `GET /` | SPA |
 | `gateway` | .NET 10 (build) | 8080 | `/health/ready` | Única porta de API exposta para a SPA |
-| `lancamentos-api` | .NET 10 (build) | 5101 (debug) | `/health/ready` | |
+| `tenants-api` | .NET 10 (build) | 5301 (debug) | `/health/ready` | Onboarding, planos, usuários; usa a Admin API do Keycloak |
+| `lancamentos-api` | .NET 10 (build) | 5101 (debug) | `/health/ready` | Também consome eventos de tenant/plano |
 | `consolidado-api-1/2` | .NET 10 (build) | — | `/health/ready` | Acesso **somente via gateway**; duas instâncias explícitas para demonstrar balanceamento e failover |
 | `consolidado-worker` | .NET 10 (build) | — | `/health/live` | |
-| `sqlserver` | mcr.microsoft.com/mssql/server:2022-latest | 1433 | `sqlcmd SELECT 1` | Um banco por serviço (database-per-service) |
+| `sqlserver` | mcr.microsoft.com/mssql/server:2022-latest | 1433 | `sqlcmd SELECT 1` | Um banco por serviço: `TenantsDb`, `LancamentosDb`, `ConsolidadoDb` |
 | `rabbitmq` | rabbitmq:4-management | 5672 / 15672 | `rabbitmq-diagnostics ping` | Definições (exchanges/filas) importadas no start |
 | `redis` | redis:7-alpine | 6379 | `redis-cli ping` | |
-| `keycloak` | quay.io/keycloak/keycloak | 8081 | `/health/ready` | Realm `fluxo-caixa` importado com usuário de teste |
+| `keycloak` | quay.io/keycloak/keycloak | 8081 | `/health/ready` | Realm `fluxo-caixa` com Organizations habilitado, clientes (SPA, API, conta de serviço do Tenants.Api) e **dois tenants de demonstração** (Free e Pro), com usuários `admin` e `operador` |
 | `aspire-dashboard` | mcr.microsoft.com/dotnet/aspire-dashboard | 18888 / 4317 | — | Traces, métricas e logs |
 
 **Resiliência local:**
@@ -77,12 +84,13 @@ flowchart TB
 
     subgraph region["Azure Brazil South — 3 zonas de disponibilidade"]
         subgraph aks["AKS / Azure Container Apps"]
-            gw["gateway ×2+"]
+            gw["gateway ×2+<br/>rate limit por tenant"]
+            tapi["tenants-api ×2"]
             lapi["lancamentos-api ×3<br/>HPA (CPU/RPS)"]
             capi["consolidado-api ×3<br/>HPA (CPU/RPS)"]
             wk["consolidado-worker ×2<br/>KEDA (tamanho da fila)"]
         end
-        sql[("Azure SQL<br/>Business Critical<br/>zone-redundant")]
+        sql[("Azure SQL (elastic pool)<br/>Business Critical<br/>zone-redundant")]
         mq{{"RabbitMQ cluster 3 nós<br/>quorum queues<br/>(ou Azure Service Bus)"}}
         redis[("Azure Cache for Redis<br/>Premium, zone-redundant")]
         kv["Azure Key Vault<br/>segredos e certificados"]
@@ -97,7 +105,10 @@ flowchart TB
     afd --> swa
     afd --> gw
     user --> entra
-    gw --> lapi & capi
+    gw --> tapi & lapi & capi
+    tapi --> sql
+    tapi --> mq
+    tapi --> entra
     lapi --> sql
     lapi --> mq
     mq --> wk
@@ -112,8 +123,9 @@ flowchart TB
 
 | Preocupação | Estratégia |
 |---|---|
-| **Escalabilidade** | Pods stateless com HPA; o Worker escala por KEDA conforme o tamanho da fila. |
+| **Escalabilidade** | Pods stateless com HPA; o Worker escala por KEDA conforme o tamanho da fila. Bancos em **elastic pool**; tenants grandes podem migrar para banco dedicado (modelo híbrido, [ADR-0015](../adr/0015-multi-tenancy-banco-compartilhado.md)). |
 | **Alta disponibilidade** | Réplicas distribuídas em 3 zonas; banco, cache e broker zone-redundant. |
 | **Disaster recovery** | Azure SQL com failover group para a região secundária; infraestrutura como código (Bicep/Terraform) para recriar o cluster. |
 | **Segurança** | WAF na borda; Managed Identity para acessar SQL e Key Vault (sem senha em configuração); rede privada (Private Endpoints) para dados. |
+| **Multi-tenancy** | Métricas e custos por `tenant.id`; rate limit por plano no gateway (ou APIM com políticas por produto/assinatura). |
 | **Deploy** | GitHub Actions: build, testes, imagem, deploy **blue/green ou canário** com rollback automático por SLO. |

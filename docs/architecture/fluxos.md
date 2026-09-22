@@ -10,17 +10,22 @@ Comportamento dinâmico da solução nos caminhos principais e nos cenários de 
 6. [Falha: RabbitMQ indisponível](#6-falha-rabbitmq-indisponível)
 7. [Falha: mensagem com erro permanente (DLQ)](#7-falha-mensagem-com-erro-permanente-dlq)
 8. [Falha: Redis indisponível](#8-falha-redis-indisponível)
+9. [Onboarding de tenant (saga com compensação)](#9-onboarding-de-tenant-saga-com-compensação)
+10. [Quota do plano excedida](#10-quota-do-plano-excedida)
+11. [Isolamento entre tenants](#11-isolamento-entre-tenants)
+12. [Rate limit por tenant (noisy neighbor)](#12-rate-limit-por-tenant-noisy-neighbor)
+13. [Troca de plano (propagação por evento)](#13-troca-de-plano-propagação-por-evento)
 
 ---
 
 ## 1. Registrar lançamento
 
-Lançamento e evento são gravados **na mesma transação** (Transactional Outbox). A resposta ao cliente **não depende** do broker nem do Consolidado.
+Lançamento e evento são gravados **na mesma transação** (Transactional Outbox). A resposta ao cliente **não depende** do broker, do Consolidado nem da Plataforma: a quota é verificada na projeção local do plano.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Comerciante
+    actor C as Operador
     participant W as Web App
     participant G as API Gateway
     participant L as Lancamentos.Api
@@ -30,14 +35,15 @@ sequenceDiagram
 
     C->>W: Preenche crédito/débito
     W->>G: POST /api/v1/lancamentos<br/>Bearer JWT + Idempotency-Key
-    G->>G: Valida JWT, rate limit
+    G->>G: Valida JWT, rate limit por tenant (plano)
     G->>L: Encaminha
-    L->>L: Valida JWT, extrai ComercianteId
-    L->>DB: Idempotency-Key já processada?
+    L->>L: Valida JWT, resolve TenantId (claim tenant_id)
+    L->>DB: Idempotency-Key já processada (tenant + chave)?
     alt chave já usada
         DB-->>L: resposta anterior
         L-->>G: 201 Created (mesma resposta, sem duplicar)
     else chave nova
+        L->>DB: Conta lançamentos do mês × TenantPlano (RN-09)
         L->>L: Lancamento.Criar(...) valida RN-01..RN-02
         L->>DB: BEGIN TRAN<br/>INSERT Lancamento<br/>INSERT OutboxMessage(LancamentoRegistrado)<br/>INSERT IdempotencyKey<br/>COMMIT
         L-->>G: 201 Created + Location
@@ -51,7 +57,7 @@ sequenceDiagram
     O->>DB: Marca mensagem como entregue
 ```
 
-**Validação inválida:** o Lancamentos.Api responde `400` com `ValidationProblemDetails` (RFC 9457) e não grava nada.
+**Validação inválida:** o Lancamentos.Api responde `400` com `ValidationProblemDetails` (RFC 9457) e não grava nada. **Quota excedida:** ver o [fluxo 10](#10-quota-do-plano-excedida).
 
 ---
 
@@ -65,18 +71,19 @@ sequenceDiagram
     participant CDB as ConsolidadoDb
     participant R as Redis
 
-    MQ->>WK: LancamentoRegistrado (EventId, ComercianteId, Tipo, Valor, Data)
+    MQ->>WK: LancamentoRegistrado (EventId, TenantId, Tipo, Valor, Data)
+    WK->>WK: TenantContext = evento.TenantId
     WK->>CDB: BEGIN TRAN
     WK->>CDB: EventId existe na inbox?
     alt já processado (entrega duplicada)
         WK->>CDB: ROLLBACK
         WK-->>MQ: ACK (descarta sem efeito)
     else novo evento
-        WK->>CDB: SELECT SaldoDiario (ComercianteId, Data)
+        WK->>CDB: SELECT SaldoDiario (TenantId, Data)
         WK->>WK: saldo.Aplicar(Tipo, Valor)
         WK->>CDB: UPSERT SaldoDiario (rowversion)<br/>INSERT Inbox(EventId)
         WK->>CDB: COMMIT
-        WK->>R: DEL consolidado:{comercianteId}:{data}
+        WK->>R: DEL consolidado:{tenantId}:{data}
         WK-->>MQ: ACK
     end
 ```
@@ -93,7 +100,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Comerciante
+    actor C as Operador
     participant G as API Gateway
     participant A as Consolidado.Api (réplica 1 ou 2)
     participant R as Redis
@@ -101,7 +108,7 @@ sequenceDiagram
 
     C->>G: GET /api/v1/consolidado/2026-09-22
     G->>A: Encaminha (round-robin entre réplicas saudáveis)
-    A->>R: GET consolidado:{comercianteId}:2026-09-22
+    A->>R: GET consolidado:{tenantId}:2026-09-22
     alt cache hit
         R-->>A: saldo serializado
     else cache miss
@@ -121,13 +128,16 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Comerciante
+    actor C as Admin
     participant L as Lancamentos.Api
     participant DB as LancamentosDb
 
     C->>L: POST /api/v1/lancamentos/{id}/estorno
-    L->>DB: Carrega Lancamento {id} do ComercianteId
-    alt não encontrado
+    L->>L: Política Admin (RN-10)
+    L->>DB: Carrega Lancamento {id} (filtro global do tenant)
+    alt papel operador
+        L-->>C: 403 Forbidden
+    else não encontrado (ou de outro tenant)
         L-->>C: 404 Not Found
     else já estornado (RN-05) ou é um estorno (RN-06)
         L-->>C: 409 Conflict (ProblemDetails)
@@ -148,7 +158,7 @@ Este é o cenário central do requisito não funcional: **Lançamentos continua 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Comerciante
+    actor C as Operador
     participant L as Lancamentos.Api
     participant MQ as RabbitMQ
     participant WK as Consolidado.Worker ❌
@@ -175,7 +185,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Comerciante
+    actor C as Operador
     participant L as Lancamentos.Api
     participant DB as LancamentosDb
     participant O as Outbox (background)
@@ -241,3 +251,145 @@ sequenceDiagram
 ```
 
 O cache é **otimização, nunca dependência**: a falha dele degrada a latência, mas não a disponibilidade.
+
+---
+
+## 9. Onboarding de tenant (saga com compensação)
+
+Cadastro em autoatendimento ([ADR-0017](../adr/0017-contexto-plataforma-onboarding-planos.md)). O tenant nunca fica "meio criado".
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Visitante (futuro admin)
+    participant G as API Gateway
+    participant T as Tenants.Api
+    participant TDB as TenantsDb
+    participant KC as Keycloak (Admin API)
+    participant MQ as RabbitMQ
+
+    V->>G: POST /api/v1/tenants (empresa, CNPJ, plano, admin)
+    G->>G: Rate limit por IP (rota pública)
+    G->>T: Encaminha
+    T->>T: Valida CNPJ e plano (RP-01)
+    T->>TDB: INSERT Tenant (status Pendente)
+    T->>KC: Cria Organization (atributos tenant_id, plano)
+    T->>KC: Cria usuário admin + vínculo + role admin
+    alt sucesso
+        T->>TDB: BEGIN TRAN<br/>UPDATE Tenant = Ativo<br/>INSERT OutboxMessage(TenantProvisionado)<br/>COMMIT
+        T-->>V: 201 Created (tenant Ativo)
+        T->>MQ: Publica TenantProvisionado (via outbox)
+    else falha transitória (Keycloak fora, timeout)
+        T-->>V: 202 Accepted (tenant Pendente)
+        loop Job de provisionamento com backoff
+            T->>KC: Tenta de novo os passos pendentes
+        end
+    else falha definitiva (ex.: e-mail já existe no Keycloak)
+        T->>KC: Compensa: remove a Organization criada
+        T->>TDB: UPDATE Tenant = Falhou (motivo)
+        T-->>V: 409 Conflict (ProblemDetails)
+    end
+    Note over T: A senha do admin é repassada ao Keycloak<br/>e nunca é persistida nem logada (RP-03)
+```
+
+---
+
+## 10. Quota do plano excedida
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Operador
+    participant L as Lancamentos.Api
+    participant DB as LancamentosDb
+
+    C->>L: POST /api/v1/lancamentos
+    L->>DB: SELECT LimiteLancamentosMes FROM TenantPlano (projeção local)
+    L->>DB: SELECT COUNT(*) do mês (índice TenantId, CriadoEm, sem estornos)
+    alt uso abaixo do limite
+        L->>DB: Registra normalmente (fluxo 1)
+        L-->>C: 201 Created
+    else uso atingiu o limite (RN-09)
+        L-->>C: 422 Unprocessable Entity<br/>ProblemDetails type quota-excedida<br/>(limite, uso, plano)
+    end
+    Note over L: Nenhuma chamada ao Tenants.Api<br/>(RNF-01 preservado)
+```
+
+---
+
+## 11. Isolamento entre tenants
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Usuário do Tenant A
+    actor B as Usuário do Tenant B
+    participant L as Lancamentos.Api
+    participant DB as LancamentosDb
+
+    A->>L: POST /lancamentos (JWT tenant_id = A)
+    L->>DB: INSERT (TenantId = A, preenchido pelo interceptor)
+    L-->>A: 201 Created (id = X)
+
+    B->>L: GET /lancamentos/X (JWT tenant_id = B)
+    L->>DB: SELECT ... WHERE Id = X AND TenantId = B (filtro global)
+    DB-->>L: nenhum registro
+    L-->>B: 404 Not Found (não revela a existência)
+
+    B->>L: GET /lancamentos?data=hoje
+    L-->>B: 200 OK, somente lançamentos do Tenant B
+```
+
+Os mesmos cenários são **testes de integração obrigatórios** em cada serviço (SLO-09).
+
+---
+
+## 12. Rate limit por tenant (noisy neighbor)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Tenant A (Free, 20 req/s)
+    actor B as Tenant B (Pro, 100 req/s)
+    participant G as API Gateway
+    participant S as Serviços
+
+    loop A dispara 60 req/s
+        A->>G: GET /consolidado/...
+        alt dentro do bucket do Tenant A
+            G->>S: Encaminha
+            S-->>A: 200 OK
+        else bucket do Tenant A esgotado
+            G-->>A: 429 Too Many Requests + Retry-After
+        end
+    end
+    B->>G: GET /consolidado/... (50 req/s)
+    G->>S: Encaminha (bucket próprio do Tenant B)
+    S-->>B: 200 OK, sem impacto do Tenant A
+```
+
+---
+
+## 13. Troca de plano (propagação por evento)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Ad as Admin
+    participant T as Tenants.Api
+    participant KC as Keycloak
+    participant MQ as RabbitMQ
+    participant L as Lancamentos.Api
+    participant G as API Gateway
+
+    Ad->>T: PUT /api/v1/tenants/atual/plano (pro)
+    T->>T: Valida RP-05 (usuários atuais dentro do limite do novo plano)
+    T->>KC: Atualiza atributo plano da Organization
+    T->>T: COMMIT Tenant + OutboxMessage(PlanoDoTenantAlterado)
+    T-->>Ad: 200 OK
+    T->>MQ: Publica PlanoDoTenantAlterado
+    MQ->>L: Entrega evento
+    L->>L: Atualiza TenantPlano (ignora se ocorridoEm for mais antigo)
+    Note over L: Nova quota vale em segundos
+    Note over G: Novo rate limit vale no próximo refresh<br/>do token (claim plano, até 5 min)
+```
