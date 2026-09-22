@@ -31,6 +31,9 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
+    <Project Path="tests/Consolidado.Application.UnitTests/Consolidado.Application.UnitTests.csproj" />
+    <Project Path="tests/Consolidado.Domain.UnitTests/Consolidado.Domain.UnitTests.csproj" />
+    <Project Path="tests/Consolidado.IntegrationTests/Consolidado.IntegrationTests.csproj" />
     <Project Path="tests/FluxoCaixa.Application.Common.UnitTests/FluxoCaixa.Application.Common.UnitTests.csproj" />
     <Project Path="tests/FluxoCaixa.Contracts.UnitTests/FluxoCaixa.Contracts.UnitTests.csproj" />
     <Project Path="tests/FluxoCaixa.Infrastructure.Common.UnitTests/FluxoCaixa.Infrastructure.Common.UnitTests.csproj" />
