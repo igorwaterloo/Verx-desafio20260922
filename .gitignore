@@ -1,0 +1,86 @@
+# =========================================================
+# Assistentes de IA / ferramentas locais (nunca versionar)
+# =========================================================
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+*.claude*
+
+# =========================================================
+# .NET
+# =========================================================
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+*.trx
+*.user
+*.suo
+*.userprefs
+*.userosscache
+*.sln.docstates
+*.nupkg
+*.snupkg
+.vs/
+_ReSharper*/
+*.DotSettings.user
+BenchmarkDotNet.Artifacts/
+project.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Segredos / configuração local
+appsettings.*.local.json
+*.pfx
+*.p12
+secrets.json
+.env
+.env.*
+!.env.example
+
+# =========================================================
+# Node / Angular
+# =========================================================
+node_modules/
+dist/
+tmp/
+out-tsc/
+.angular/
+.sass-cache/
+npm-debug.log*
+yarn-error.log*
+.nx/
+/src/Web/**/coverage/
+playwright-report/
+test-results/
+
+# =========================================================
+# IDEs / SO
+# =========================================================
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================================================
+# Testes de carga (resultados brutos)
+# =========================================================
+tests/stress/**/results/
