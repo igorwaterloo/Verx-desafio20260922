@@ -2,7 +2,7 @@ using FluxoCaixa.Infrastructure.Common.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddWebApiDefaults();
+builder.Services.AddWebApiDefaults(builder.Configuration);
 
 var app = builder.Build();
 
