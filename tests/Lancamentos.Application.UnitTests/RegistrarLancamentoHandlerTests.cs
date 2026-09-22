@@ -58,7 +58,7 @@ public sealed class RegistrarLancamentoHandlerTests
         resultado.Error.Type.ShouldBe(ErrorType.BusinessRule);
         resultado.Error.Code.ShouldBe("lancamento.quota_excedida");
         _cenario.Lancamentos.DidNotReceiveWithAnyArgs().Adicionar(default!);
-        await _cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -89,8 +89,8 @@ public sealed class RegistrarLancamentoHandlerTests
         var resultado = await CriarHandler().HandleAsync(Comando(data: Cenario.Hoje.AddDays(1)), Ct);
 
         resultado.Error.ShouldBe(LancamentoErros.DataFutura);
-        await _cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
-        await _cenario.Publicador.DidNotReceiveWithAnyArgs().PublishAsync<FluxoCaixa.Contracts.LancamentoRegistrado>(default!, default);
+        await _cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _cenario.Publicador.DidNotReceiveWithAnyArgs().PublishAsync<FluxoCaixa.Contracts.LancamentoRegistrado>(default!, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class RegistrarLancamentoHandlerTests
 
         resultado.Value.Id.ShouldBe(existente.Id);
         _cenario.Lancamentos.DidNotReceiveWithAnyArgs().Adicionar(default!);
-        await _cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

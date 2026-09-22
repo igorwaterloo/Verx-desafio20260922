@@ -84,3 +84,6 @@ desktop.ini
 # Testes de carga (resultados brutos)
 # =========================================================
 tests/stress/**/results/
+
+# Perfis locais de execução gerados pelo "dotnet run"
+**/Properties/launchSettings.json

@@ -1,4 +1,3 @@
-using FluxoCaixa.Contracts;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Lancamentos.Application.Abstractions;
 using Lancamentos.Domain.Lancamentos;
@@ -38,9 +37,9 @@ internal sealed class Cenario
     public static Lancamento LancamentoExistente(TipoLancamento tipo = TipoLancamento.Credito) =>
         Lancamento.Criar(Tenant, tipo, 100m, Hoje, "Venda existente", "usuario-0", Agora.AddHours(-1)).Value;
 
-    public LancamentoRegistrado? UltimoEventoPublicado() =>
+    public FluxoCaixa.Contracts.LancamentoRegistrado? UltimoEventoPublicado() =>
         Publicador.ReceivedCalls()
             .Select(c => c.GetArguments()[0])
-            .OfType<LancamentoRegistrado>()
+            .OfType<FluxoCaixa.Contracts.LancamentoRegistrado>()
             .LastOrDefault();
 }

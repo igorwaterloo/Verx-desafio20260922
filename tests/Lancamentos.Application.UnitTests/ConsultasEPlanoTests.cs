@@ -86,6 +86,6 @@ public sealed class ConsultasEPlanoTests
         await handler.HandleAsync(new AtualizarPlanoDoTenantCommand("free", 1_000, Cenario.Agora.AddMinutes(-5)), Ct);
 
         atual.PlanoCodigo.ShouldBe("pro");
-        await cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await cenario.UnitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }
