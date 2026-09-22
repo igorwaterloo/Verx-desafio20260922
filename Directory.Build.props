@@ -1,0 +1,33 @@
+<Project>
+  <!--
+    Configuração comum a todos os projetos .NET da solução.
+    Projetos individuais só declaram o que é específico deles.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>false</InvariantGlobalization>
+
+    <!-- Qualidade: warnings quebram o build e o estilo do .editorconfig é validado na compilação -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Default</AnalysisMode>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <!-- Builds reproduzíveis -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <Authors>Igor Waterloo</Authors>
+    <Product>FluxoCaixa</Product>
+  </PropertyGroup>
+
+  <!-- Projetos de teste -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+</Project>
