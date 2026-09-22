@@ -126,12 +126,47 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
-    healthcheck:
+    healthcheck: &healthcheck-dotnet
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r status <&3 && case \"$$status\" in *' 200 '*) exit 0;; *) exit 1;; esac"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  tenants-api:
+    <<: *restart
+    image: fluxo-caixa/tenants-api:dev
+    build:
+      context: ..
+      dockerfile: src/api/Dockerfile
+      args:
+        PROJETO: src/api/Tenants/Tenants.Api/Tenants.Api.csproj
+        ASSEMBLY: Tenants.Api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Tenants: "Server=sqlserver,1433;Database=TenantsDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Usuario: ${RABBITMQ_USER}
+      RabbitMq__Senha: ${RABBITMQ_PASSWORD}
+      # Admin API do Keycloak pela rede interna, com a conta de serviço fluxo-caixa-tenants.
+      Keycloak__Url: http://keycloak:8080
+      Keycloak__ClientSecret: ${TENANTS_CLIENT_SECRET}
+      Autenticacao__Authority: http://keycloak:8080/realms/fluxo-caixa
+      Autenticacao__EmissorValido: http://localhost:8081/realms/fluxo-caixa
+      Autenticacao__RequireHttpsMetadata: "false"
+      Database__AplicarMigracoes: "true"
+      # Registra os tenants de demonstração do realm e publica os planos (quota Pro para o Mercado Demo).
+      Demonstracao__SemearTenants: "true"
+    ports:
+      - "5301:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck: *healthcheck-dotnet
 
   consolidado-worker:
     <<: *restart
@@ -158,12 +193,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck: &healthcheck-dotnet
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r status <&3 && case \"$$status\" in *' 200 '*) exit 0;; *) exit 1;; esac"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+    healthcheck: *healthcheck-dotnet
 
   # Duas réplicas explícitas da Api de leitura (ADR-0010): o Gateway balanceia entre elas com health check.
   consolidado-api-1: &consolidado-api

@@ -14,6 +14,7 @@ public sealed class ErrorTests
         Error.Forbidden("c", "m").Type.ShouldBe(ErrorType.Forbidden);
         Error.BusinessRule("c", "m").Type.ShouldBe(ErrorType.BusinessRule);
         Error.Failure("c", "m").Type.ShouldBe(ErrorType.Failure);
+        Error.Unavailable("c", "m").Type.ShouldBe(ErrorType.Unavailable);
     }
 
     [Fact]

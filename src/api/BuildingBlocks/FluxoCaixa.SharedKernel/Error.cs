@@ -13,6 +13,9 @@ public enum ErrorType
 
     /// <summary>Regra de negócio violada (ex.: quota do plano excedida) — HTTP 422.</summary>
     BusinessRule,
+
+    /// <summary>Dependência externa indisponível; a operação pode ser repetida — HTTP 503.</summary>
+    Unavailable,
 }
 
 /// <summary>
@@ -34,6 +37,8 @@ public record Error(string Code, string Message, ErrorType Type)
     public static Error BusinessRule(string code, string message) => new(code, message, ErrorType.BusinessRule);
 
     public static Error Failure(string code, string message) => new(code, message, ErrorType.Failure);
+
+    public static Error Unavailable(string code, string message) => new(code, message, ErrorType.Unavailable);
 }
 
 /// <summary>

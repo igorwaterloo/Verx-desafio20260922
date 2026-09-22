@@ -279,17 +279,18 @@ sequenceDiagram
         T->>TDB: BEGIN TRAN<br/>UPDATE Tenant = Ativo<br/>INSERT OutboxMessage(TenantProvisionado)<br/>COMMIT
         T-->>V: 201 Created (tenant Ativo)
         T->>MQ: Publica TenantProvisionado (via outbox)
-    else falha transitória (Keycloak fora, timeout)
-        T-->>V: 202 Accepted (tenant Pendente)
-        loop Job de provisionamento com backoff
-            T->>KC: Tenta de novo os passos pendentes
-        end
+    else falha transitória (Keycloak fora, timeout após retries)
+        T->>TDB: Tenant continua Pendente (tentativa registrada)
+        T-->>V: 503 Service Unavailable (identidade_indisponivel)
+        V->>T: Reenvia o mesmo POST (mesmo CNPJ e e-mail)
+        T->>KC: Retoma: organização e admin são buscados pelo tenant_id antes de criar (idempotente)
+        T-->>V: 201 Created (tenant Ativo)
     else falha definitiva (ex.: e-mail já existe no Keycloak)
         T->>KC: Compensa: remove a Organization criada
         T->>TDB: UPDATE Tenant = Falhou (motivo)
         T-->>V: 409 Conflict (ProblemDetails)
     end
-    Note over T: A senha do admin é repassada ao Keycloak<br/>e nunca é persistida nem logada (RP-03)
+    Note over T: A senha do admin é repassada ao Keycloak<br/>e nunca é persistida nem logada (RP-03).<br/>Pendentes abandonados há mais de 24 h são<br/>compensados por um job e marcados Falhou.
 ```
 
 ---
