@@ -30,6 +30,12 @@ Para cada serviço, com dois tenants (A e B) criados no teste:
 
 Uma falha nesses testes **bloqueia o merge e o deploy**.
 
+## Como os testes são executados
+
+- **Runner:** Microsoft Testing Platform (MTP), habilitado em `global.json`. Comando: `dotnet test`.
+- **Cobertura:** `Microsoft.Testing.Extensions.CodeCoverage` (`dotnet test -- --coverage`).
+- **Em container:** `scripts/test.ps1` (Windows) ou `scripts/test.sh` (Linux/macOS) executam build e testes no `mcr.microsoft.com/dotnet/sdk:10.0`, sem exigir o SDK .NET na máquina. É o mesmo ambiente do CI.
+
 ## TDD
 
 As regras de negócio seguem **vermelho → verde → refatorar**: o teste que descreve a regra (ex.: RN-05, "um lançamento só pode ser estornado uma vez"; RN-09, "quota do plano") é escrito antes da implementação.

@@ -70,6 +70,10 @@ Testes são requisito obrigatório do desafio. Além de cobrir as regras de neg�
 - Reuso de containers por fixture; unitários separados para feedback rápido.
 - Resultados de carga registrados com a especificação da máquina em [`testes.md`](../testes.md).
 
+## Atualizações
+
+- **2026-09-22 — Execução e cobertura:** com xUnit v3 no .NET 10 SDK, os testes rodam sobre o **Microsoft Testing Platform** (MTP), habilitado em `global.json` (`"test": { "runner": "Microsoft.Testing.Platform" }`). A cobertura passa a ser coletada por **`Microsoft.Testing.Extensions.CodeCoverage`** (o `coverlet.collector` é específico do VSTest). Os testes também rodam **dentro do container** `mcr.microsoft.com/dotnet/sdk:10.0` (scripts em `scripts/`), que é o mesmo ambiente do CI e dispensa o SDK na máquina.
+
 ## Referências
 - Martin Fowler — *The Practical Test Pyramid*
 - Kent Beck — *Test-Driven Development: By Example*
