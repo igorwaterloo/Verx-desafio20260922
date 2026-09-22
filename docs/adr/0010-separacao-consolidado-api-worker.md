@@ -52,6 +52,14 @@ Ambos referenciam os mesmos projetos `Consolidado.Domain`, `Consolidado.Applicat
 - Transações curtas no Worker (upsert de uma linha + inbox).
 - Evolução: réplica de leitura do banco para a Api, se necessário.
 
+## Atualizações
+
+- **2026-09-22 — Implementação (Fase 5):**
+  - O Worker é um **host web mínimo** (sem controllers), apenas para expor `/health/live` e `/health/ready` ao orquestrador.
+  - O Worker é o **escritor** da projeção e por isso é quem aplica as migrations do `ConsolidadoDb`; as réplicas da Api só sobem depois de o Worker estar saudável.
+  - A infraestrutura é composta em blocos (`AddConsolidadoPersistencia`, `AddConsolidadoCache`, `AddConsolidadoMensageria`): a Api não registra MassTransit; o Worker não registra controllers.
+  - Medido localmente: do POST no Lançamentos ao saldo visível no Consolidado, **250–350 ms** em regime (SLO-07 < 5 s). Com o Consolidado inteiro parado, o Lançamentos seguiu respondendo 201 e o saldo convergiu ao religar.
+
 ## Referências
 - Microsoft — *CQRS pattern*; *Competing Consumers pattern*
 - [C4 — Componentes do Consolidado](../architecture/c4-3-componentes.md)

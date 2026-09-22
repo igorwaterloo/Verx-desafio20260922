@@ -1,6 +1,6 @@
 # ADR-0006: Cache-aside com Redis e fallback para o banco
 
-- **Status:** Aceita — complementada por [ADR-0015](0015-multi-tenancy-banco-compartilhado.md)
+- **Status:** Aceita — complementada por [ADR-0015](0015-multi-tenancy-banco-compartilhado.md); detalhes de implementação em Atualizações
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0010](0010-separacao-consolidado-api-worker.md), [requisitos não funcionais](../requisitos-nao-funcionais.md)
@@ -73,6 +73,13 @@ O Consolidado recebe **50 req/s em pico** (RNF-02), com um padrão de acesso mui
 ## Atualizações
 
 - **2026-09-22 — Multi-tenancy:** as chaves passam a ser prefixadas pelo tenant: `consolidado:{tenantId}:{yyyy-MM-dd}` e `consolidado:{tenantId}:{inicio}:{fim}`. O saldo é **por tenant (empresa)**, não por usuário, então todos os usuários do tenant compartilham a mesma entrada de cache, o que aumenta o hit ratio. Ver [ADR-0015](0015-multi-tenancy-banco-compartilhado.md).
+
+- **2026-09-22 — Implementação (Fase 5):**
+  - **Timeout:** `SyncTimeout`/`AsyncTimeout` de 50 ms (configurável em `Redis:TimeoutMs`), `AbortOnConnectFail=false`: o serviço sobe mesmo com o Redis fora e reconecta em segundo plano.
+  - **Disjuntor:** 3 falhas consecutivas abrem o circuito por 15 s; nesse intervalo as consultas vão direto ao banco sem pagar o timeout. Depois disso, a próxima chamada testa o Redis de novo. A invalidação (`DEL`) é tentada mesmo com o circuito aberto.
+  - **Health check:** Redis fora deixa o serviço `Degraded`, fora da readiness: a réplica continua recebendo tráfego.
+  - **Corrida leitura × invalidação:** uma consulta que leu o banco antes do commit pode gravar no cache um valor antigo **depois** da invalidação. O efeito fica limitado pelo TTL (60 s no dia corrente). É aceito para um relatório com consistência eventual; a evolução é versionar a entrada de cache pelo `rowversion` do saldo.
+  - Validado em teste de integração: com o Redis **pausado**, as consultas continuam respondendo 200 em menos de 2 s.
 
 ## Referências
 - Microsoft — *Cache-Aside pattern* (Azure Architecture Center)

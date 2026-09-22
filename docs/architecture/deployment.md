@@ -58,8 +58,8 @@ flowchart TB
 | `gateway` | .NET 10 (build) | 8080 | `/health/ready` | Única porta de API exposta para a SPA |
 | `tenants-api` | .NET 10 (build) | 5301 (debug) | `/health/ready` | Onboarding, planos, usuários; usa a Admin API do Keycloak |
 | `lancamentos-api` | `src/api/Dockerfile` (aspnet:10.0, usuário não-root) | 5101 | `/health/ready` (SQL Server + RabbitMQ) | Aplica as migrations na inicialização; consome eventos de tenant/plano; valida JWT com JWKS pelo endereço interno do Keycloak |
-| `consolidado-api-1/2` | .NET 10 (build) | — | `/health/ready` | Acesso **somente via gateway**; duas instâncias explícitas para demonstrar balanceamento e failover |
-| `consolidado-worker` | .NET 10 (build) | — | `/health/live` | |
+| `consolidado-api-1/2` | `src/api/Dockerfile` | 5201 / 5202 (depuração) | `/health/ready` (SQL Server) | Somente leitura, com cache Redis; o tráfego da aplicação passa pelo gateway; duas instâncias explícitas para demonstrar balanceamento e failover. Redis fora deixa o health `Degraded`, sem tirar a réplica do balanceamento |
+| `consolidado-worker` | `src/api/Dockerfile` | — | `/health/ready` (SQL Server + RabbitMQ) | Host web mínimo (apenas health checks); consome `LancamentoRegistrado` e **aplica as migrations do ConsolidadoDb** (é o escritor da projeção) |
 | `sqlserver` | mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04 | 1433 | `sqlcmd SELECT 1` | Um banco por serviço: `TenantsDb`, `LancamentosDb`, `ConsolidadoDb` |
 | `rabbitmq` | rabbitmq:4.3-management-alpine | 5672 / 15672 | `rabbitmq-diagnostics ping` | Exchanges e filas criadas pelo MassTransit na inicialização dos serviços |
 | `redis` | redis:8.8-alpine | 6379 | `redis-cli ping` | Somente cache: sem persistência, `maxmemory` 256 MB com LRU |
