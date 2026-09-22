@@ -46,10 +46,14 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Suíte | Testes | Destaques |
 |---|---|---|
 | Arquitetura | 20 | Camadas, contextos isolados, building blocks sem dependências, `ITenantEntity` |
-| SharedKernel / Application.Common / Infrastructure.Common / Contracts | 51 | Result, primitivas de domínio, dispatcher e decorators, isolamento de tenant no EF Core, contratos JSON |
+| SharedKernel / Application.Common / Infrastructure.Common / Contracts | 54 | Result, primitivas de domínio, dispatcher e decorators, isolamento de tenant no EF Core, contratos JSON |
 | Lançamentos — domínio | 30 | RN-01 a RN-06, borda de fuso (23h30 em São Paulo = dia seguinte em UTC), projeção do plano |
 | Lançamentos — aplicação | 21 | Quota RN-09 (mês em São Paulo, padrão Free), idempotência inclusive em corrida, estorno RN-10 |
 | Lançamentos — integração | 12 | Outbox → RabbitMQ, 400/401/403/404/409/422, isolamento entre tenants, quota alimentada por evento, **POST com o RabbitMQ pausado retorna 201 e o evento é entregue quando o broker volta (RNF-01)** |
+
+| Consolidado — domínio | 10 | Aplicação comutativa (RC-02), estorno anulando o efeito, inbox |
+| Consolidado — aplicação | 14 | Inbox, invalidação após o commit, cache-aside com TTL por tipo de dia, zeros (RC-03), período (máx. 93 dias) |
+| Consolidado — integração | 11 | Evento → worker → consulta; **evento duplicado aplicado uma vez**; isolamento; cache populado e invalidado; **Redis pausado sem erro** |
 
 ### Cenários de integração de Lançamentos
 
@@ -63,6 +67,27 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Estorno por operador / admin / segundo estorno | 403 / 201 + evento com tipo inverso / 409 |
 | Plano com limite 2 publicado por evento | 3º lançamento do mês retorna 422 |
 | RabbitMQ pausado durante o registro | 201; evento entregue após o broker voltar |
+
+### Cenários de integração do Consolidado
+
+| Cenário | Resultado esperado |
+|---|---|
+| Créditos e débitos publicados | Saldo do dia com totais corretos |
+| Mesmo evento entregue duas vezes | Aplicado uma única vez (inbox) |
+| Crédito seguido do estorno | Saldo zero, 2 lançamentos |
+| Dia sem movimento / período com dias vazios | Zeros / todos os dias preenchidos e totais |
+| Período invertido ou maior que 93 dias | 400 |
+| Tenant B consulta o dia com movimento do tenant A | Saldo zero |
+| Consulta → novo evento | Cache populado e invalidado; nova consulta reflete o evento |
+| Redis pausado | 200 pelo banco, em menos de 2 s (disjuntor) |
+
+## Verificação ponta a ponta (compose, tokens reais)
+
+| Verificação | Resultado |
+|---|---|
+| POST no Lançamentos → saldo visível no Consolidado (SLO-07 < 5 s) | 250–350 ms em regime; ~4,9 s na primeira requisição após subir os containers (cold start) |
+| Consolidado inteiro parado (api-1, api-2, worker) | Consulta indisponível; **10/10 lançamentos com 201** (RNF-01) |
+| Consolidado religado | Backlog processado; saldo convergiu com os 10 lançamentos |
 
 ## Resultados de carga
 

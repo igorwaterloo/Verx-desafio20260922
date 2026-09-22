@@ -11,6 +11,7 @@ Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa 
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Como executar localmente](#como-executar-localmente)
 - [API de Lançamentos](#api-de-lançamentos)
+- [API de Consolidado](#api-de-consolidado)
 - [Testes](#testes)
 - [Documentação](#documentação)
 - [Roadmap](#roadmap)
@@ -159,12 +160,14 @@ O mesmo `docker compose up -d` (a partir de `deploy/`) compila as imagens e sobe
 | Serviço | Endereço | Documentação da API |
 |---|---|---|
 | Lancamentos.Api | http://localhost:5101 | http://localhost:5101/scalar |
+| Consolidado.Api (réplicas 1 e 2) | http://localhost:5201 · http://localhost:5202 | http://localhost:5201/scalar |
+| Consolidado.Worker | — (interno) | — |
 
 Cada API expõe `/health/live`, `/health/ready` e, em desenvolvimento, o OpenAPI em `/openapi/v1.json` e a UI **Scalar** em `/scalar`. As migrations são aplicadas na inicialização.
 
 Para executar fora do container (com a infraestrutura do passo 1 no ar): `dotnet run --project src/api/Lancamentos/Lancamentos.Api`.
 
-> O Consolidado, o serviço de Tenants, o Gateway e o frontend entram no compose nas próximas fases.
+> O serviço de Tenants, o Gateway (que passa a ser a entrada única e balanceia as réplicas do Consolidado) e o frontend entram no compose nas próximas fases.
 
 ## API de Lançamentos
 
@@ -190,6 +193,22 @@ curl -X POST http://localhost:5101/api/v1/lancamentos \
 
 Cada lançamento (e cada estorno) publica o evento `LancamentoRegistrado` no RabbitMQ via Transactional Outbox: o registro **não depende** do broker nem do Consolidado (RNF-01).
 
+## API de Consolidado
+
+Saldo diário consolidado do tenant, atualizado pelo `Consolidado.Worker` a partir dos eventos (consistência eventual; em regime local, 250–350 ms após o lançamento). Leitura com cache Redis; com o Redis fora, responde pelo banco.
+
+| Método e rota | Papel | Respostas |
+|---|---|---|
+| `GET /api/v1/consolidado/{data}` | operador | 200 (dia sem movimento retorna zeros) |
+| `GET /api/v1/consolidado?inicio=AAAA-MM-DD&fim=AAAA-MM-DD` | operador | 200 com todos os dias e os totais; 400 se o período for inválido ou maior que 93 dias |
+
+```bash
+curl http://localhost:5201/api/v1/consolidado/2026-09-22 -H "Authorization: Bearer $TOKEN"
+# {"data":"2026-09-22","totalCreditos":1000.00,"totalDebitos":250.00,"saldo":750.00,"quantidadeLancamentos":2}
+```
+
+**Demonstração do RNF-01:** `docker compose stop consolidado-api-1 consolidado-api-2 consolidado-worker` → os lançamentos continuam retornando 201 → `docker compose start consolidado-worker consolidado-api-1 consolidado-api-2` → o saldo converge com todos os lançamentos feitos durante a queda.
+
 ## Testes
 
 ```bash
@@ -214,6 +233,9 @@ Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (er
 | `FluxoCaixa.Contracts.UnitTests` | Contratos JSON dos eventos de integração |
 | `Lancamentos.Domain.UnitTests` | `Dinheiro`, agregado `Lancamento` (RN-01 a RN-06, fuso de São Paulo), projeção `TenantPlano` |
 | `Lancamentos.Application.UnitTests` | Registro (quota RN-09, idempotência RN-08), estorno (RN-10), consultas e validadores |
+| `Consolidado.Domain.UnitTests` | `SaldoDiario` (aplicação comutativa, estorno), inbox |
+| `Consolidado.Application.UnitTests` | Aplicação idempotente de eventos, cache-aside e TTLs, período com dias preenchidos |
+| `Consolidado.IntegrationTests` | Evento → worker → consulta com SQL Server, RabbitMQ e Redis reais: duplicidade, isolamento, cache e **Redis fora do ar** |
 | `Lancamentos.IntegrationTests` | API de ponta a ponta com SQL Server e RabbitMQ reais (Testcontainers): outbox, isolamento entre tenants, quota via evento e **registro com o RabbitMQ fora do ar** |
 
 Estratégia completa: [docs/testes.md](docs/testes.md).
@@ -229,7 +251,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 2.5 — Revisão SaaS multi-tenant (ADRs 0015–0017, domínio, C4, fluxos, NFR)
 - [x] Fase 3 — Estrutura da solução (inclui building blocks de multi-tenancy)
 - [x] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
-- [ ] Fase 5 — Serviço de Consolidado
+- [x] Fase 5 — Serviço de Consolidado
 - [ ] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
 - [ ] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
 - [ ] Fase 7 — Frontend Angular (inclui cadastro da empresa e gestão de usuários)

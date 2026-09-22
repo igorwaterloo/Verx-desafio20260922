@@ -3,7 +3,6 @@ using FluxoCaixa.SharedKernel;
 using FluxoCaixa.SharedKernel.Cqrs;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Lancamentos.Application.Abstractions;
-using Lancamentos.Domain;
 using Lancamentos.Domain.Lancamentos;
 using Lancamentos.Domain.Planos;
 

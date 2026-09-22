@@ -1,4 +1,4 @@
-namespace Lancamentos.Domain;
+namespace FluxoCaixa.SharedKernel;
 
 /// <summary>
 /// Datas de negócio no fuso do comerciante (America/Sao_Paulo). O Brasil não adota horário
