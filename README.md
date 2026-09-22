@@ -111,15 +111,81 @@ Separar as camadas em projetos faz o **compilador** impedir dependências proibi
 ## Como executar localmente
 
 ### Pré-requisitos
-- [.NET SDK 10.0.400+](https://dotnet.microsoft.com/download)
-- [Node.js LTS](https://nodejs.org/) (24+)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (com WSL2 no Windows) — **obrigatório**
+- [.NET SDK 10.0.400+](https://dotnet.microsoft.com/download) — opcional: build e testes também rodam em container (ver [Testes](#testes))
+- [Node.js LTS](https://nodejs.org/) (24+) — para o frontend (Fase 7)
 
-### Passos
-_Em breve._
+### 1. Subir a infraestrutura
+
+```bash
+cd deploy
+cp .env.example .env          # ajuste as senhas se quiser; o .env não é versionado
+docker compose up -d
+docker compose ps             # aguarde todos ficarem "healthy" (~1 min)
+```
+
+| Componente | Endereço | Acesso |
+|---|---|---|
+| Keycloak (console) | http://localhost:8081 | `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` do `.env` |
+| RabbitMQ (management) | http://localhost:15672 | `RABBITMQ_USER` / `RABBITMQ_PASSWORD` do `.env` |
+| Aspire Dashboard (observabilidade) | http://localhost:18888 | anônimo (somente local) |
+| SQL Server | `localhost,1433` | `sa` / `MSSQL_SA_PASSWORD` do `.env` |
+| Redis | `localhost:6379` | — |
+
+### 2. Usuários de demonstração
+
+O realm `fluxo-caixa` é importado automaticamente com dois tenants (Organizations do Keycloak). Senha de todos: **`Senha@123`** (somente ambiente local).
+
+| Tenant | Plano | `tenant_id` | Usuário `admin` | Usuário `operador` |
+|---|---|---|---|---|
+| Padaria Demo | Free | `0192f79e-0001-7000-8000-000000000001` | `admin.padaria` | `operador.padaria` |
+| Mercado Demo | Pro | `0192f79e-0002-7000-8000-000000000002` | `admin.mercado` | `operador.mercado` |
+
+Obter um token para testar as APIs (client `fluxo-caixa-testes`, habilitado só localmente):
+
+```bash
+curl -s -X POST http://localhost:8081/realms/fluxo-caixa/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=fluxo-caixa-testes \
+  -d username=admin.mercado -d 'password=Senha@123'
+```
+
+O access token traz as claims `tenant_id`, `plano`, `roles` (`admin` inclui `operador`) e a audiência `fluxo-caixa-api`.
+
+### 3. Compilar e executar uma API
+
+```bash
+dotnet build FluxoCaixa.slnx
+dotnet run --project src/api/Lancamentos/Lancamentos.Api
+```
+
+Em ambiente de desenvolvimento cada API expõe `/health/live`, `/health/ready`, o documento OpenAPI em `/openapi/v1.json` e a UI **Scalar** em `/scalar`.
+
+> As APIs, o Worker, o Gateway e o frontend passam a subir pelo mesmo `docker compose` nas próximas fases.
 
 ## Testes
-_Em breve._
+
+```bash
+dotnet test                    # usa o Microsoft Testing Platform (global.json)
+dotnet test -- --coverage      # com cobertura
+```
+
+Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (erro `0x800711C7`, *Smart App Control*) — rode tudo em container:
+
+```powershell
+./scripts/test.ps1                                   # Windows
+./scripts/test.sh                                    # Linux / macOS
+./scripts/test.ps1 --project tests/Architecture.Tests
+```
+
+| Projeto de teste | Cobre |
+|---|---|
+| `Architecture.Tests` | Regras de dependência da Clean Architecture, isolamento entre contextos, `ITenantEntity` nas entidades |
+| `FluxoCaixa.SharedKernel.UnitTests` | `Result`, `Error`, `Entity`, `AggregateRoot`, `ValueObject`, `TenantContext` |
+| `FluxoCaixa.Application.Common.UnitTests` | Dispatcher CQRS e decorators (validação, log) |
+| `FluxoCaixa.Infrastructure.Common.UnitTests` | Isolamento de tenant no EF Core (filtro global, gravação) e middleware de tenant |
+| `FluxoCaixa.Contracts.UnitTests` | Contratos JSON dos eventos de integração |
+
+Estratégia completa: [docs/testes.md](docs/testes.md).
 
 ## Documentação
 Índice completo: [`docs/README.md`](docs/README.md).
@@ -130,7 +196,7 @@ _Em breve._
 - [x] Fase 1 — Diagramas C4 e definição de arquitetura
 - [x] Fase 2 — ADRs
 - [x] Fase 2.5 — Revisão SaaS multi-tenant (ADRs 0015–0017, domínio, C4, fluxos, NFR)
-- [ ] Fase 3 — Estrutura da solução (inclui building blocks de multi-tenancy)
+- [x] Fase 3 — Estrutura da solução (inclui building blocks de multi-tenancy)
 - [ ] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
 - [ ] Fase 5 — Serviço de Consolidado
 - [ ] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
