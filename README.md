@@ -10,6 +10,7 @@ Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa 
 - [Stack](#stack)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Como executar localmente](#como-executar-localmente)
+- [API de Lançamentos](#api-de-lançamentos)
 - [Testes](#testes)
 - [Documentação](#documentação)
 - [Roadmap](#roadmap)
@@ -151,16 +152,43 @@ curl -s -X POST http://localhost:8081/realms/fluxo-caixa/protocol/openid-connect
 
 O access token traz as claims `tenant_id`, `plano`, `roles` (`admin` inclui `operador`) e a audiência `fluxo-caixa-api`.
 
-### 3. Compilar e executar uma API
+### 3. Serviços da aplicação
+
+O mesmo `docker compose up -d` (a partir de `deploy/`) compila as imagens e sobe os serviços. Para reconstruir após alterar o código: `docker compose up -d --build`.
+
+| Serviço | Endereço | Documentação da API |
+|---|---|---|
+| Lancamentos.Api | http://localhost:5101 | http://localhost:5101/scalar |
+
+Cada API expõe `/health/live`, `/health/ready` e, em desenvolvimento, o OpenAPI em `/openapi/v1.json` e a UI **Scalar** em `/scalar`. As migrations são aplicadas na inicialização.
+
+Para executar fora do container (com a infraestrutura do passo 1 no ar): `dotnet run --project src/api/Lancamentos/Lancamentos.Api`.
+
+> O Consolidado, o serviço de Tenants, o Gateway e o frontend entram no compose nas próximas fases.
+
+## API de Lançamentos
+
+Todas as rotas exigem `Authorization: Bearer <token>`; o tenant vem do token. Erros seguem ProblemDetails (RFC 9457) com o código estável em `codigo`.
+
+| Método e rota | Papel | Respostas |
+|---|---|---|
+| `POST /api/v1/lancamentos` (header opcional `Idempotency-Key`) | operador | 201, 400 (validação), 422 (quota do plano) |
+| `GET /api/v1/lancamentos/{id}` | operador | 200, 404 (inexistente ou de outro tenant) |
+| `GET /api/v1/lancamentos?data=AAAA-MM-DD&pagina=1&tamanhoPagina=50` | operador | 200 (paginado) |
+| `POST /api/v1/lancamentos/{id}/estorno` | admin | 201, 403, 404, 409 (já estornado) |
 
 ```bash
-dotnet build FluxoCaixa.slnx
-dotnet run --project src/api/Lancamentos/Lancamentos.Api
+TOKEN=$(curl -s -X POST http://localhost:8081/realms/fluxo-caixa/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=fluxo-caixa-testes \
+  -d username=operador.mercado -d 'password=Senha@123' | jq -r .access_token)
+
+curl -X POST http://localhost:5101/api/v1/lancamentos \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"tipo":"Credito","valor":1500.50,"dataCompetencia":"2026-09-22","descricao":"Vendas do dia"}'
 ```
 
-Em ambiente de desenvolvimento cada API expõe `/health/live`, `/health/ready`, o documento OpenAPI em `/openapi/v1.json` e a UI **Scalar** em `/scalar`.
-
-> As APIs, o Worker, o Gateway e o frontend passam a subir pelo mesmo `docker compose` nas próximas fases.
+Cada lançamento (e cada estorno) publica o evento `LancamentoRegistrado` no RabbitMQ via Transactional Outbox: o registro **não depende** do broker nem do Consolidado (RNF-01).
 
 ## Testes
 
@@ -184,6 +212,9 @@ Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (er
 | `FluxoCaixa.Application.Common.UnitTests` | Dispatcher CQRS e decorators (validação, log) |
 | `FluxoCaixa.Infrastructure.Common.UnitTests` | Isolamento de tenant no EF Core (filtro global, gravação) e middleware de tenant |
 | `FluxoCaixa.Contracts.UnitTests` | Contratos JSON dos eventos de integração |
+| `Lancamentos.Domain.UnitTests` | `Dinheiro`, agregado `Lancamento` (RN-01 a RN-06, fuso de São Paulo), projeção `TenantPlano` |
+| `Lancamentos.Application.UnitTests` | Registro (quota RN-09, idempotência RN-08), estorno (RN-10), consultas e validadores |
+| `Lancamentos.IntegrationTests` | API de ponta a ponta com SQL Server e RabbitMQ reais (Testcontainers): outbox, isolamento entre tenants, quota via evento e **registro com o RabbitMQ fora do ar** |
 
 Estratégia completa: [docs/testes.md](docs/testes.md).
 
@@ -197,7 +228,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 2 — ADRs
 - [x] Fase 2.5 — Revisão SaaS multi-tenant (ADRs 0015–0017, domínio, C4, fluxos, NFR)
 - [x] Fase 3 — Estrutura da solução (inclui building blocks de multi-tenancy)
-- [ ] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
+- [x] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
 - [ ] Fase 5 — Serviço de Consolidado
 - [ ] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
 - [ ] Fase 6 — Gateway e segurança (rate limit por tenant/plano)

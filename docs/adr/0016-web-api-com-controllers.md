@@ -1,6 +1,6 @@
 # ADR-0016: Web APIs com Controllers (ASP.NET Core Web API)
 
-- **Status:** Aceita
+- **Status:** Aceita — atualizada em 2026-09-22 (ver Atualizações)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0003](0003-clean-architecture-cqrs.md), [ADR-0015](0015-multi-tenancy-banco-compartilhado.md)
@@ -50,6 +50,14 @@ Os serviços expõem **Web APIs REST** do produto SaaS. O ASP.NET Core oferece d
 
 ### Mitigações
 - Regra: o controller só despacha para a Application (testes de arquitetura verificam que controllers não dependem de Infrastructure nem de `DbContext`).
+
+## Atualizações
+
+- **2026-09-22 — Implementação (Fase 4):**
+  - **Idempotência** saiu do filtro HTTP e foi para o caso de uso: o controller repassa o header `Idempotency-Key` ao command, e a chave é gravada **na mesma transação** do lançamento. Um filtro não enxergaria a transação e deixaria uma janela de duplicidade entre a checagem e a gravação.
+  - **Tenant obrigatório** é garantido pelo `TenantResolutionMiddleware` (403 sem a claim `tenant_id`) em vez de um filtro de controller: vale para qualquer endpoint autenticado, inclusive os que não são controllers.
+  - **Segurança por padrão:** política de fallback exige usuário autenticado; health checks e OpenAPI/Scalar são marcados como anônimos explicitamente.
+  - **ProblemDetails:** a `ApiControllerBase` não usa `[Produces("application/json")]`, que sobrescrevia o `application/problem+json` das respostas de erro. Cada erro inclui o código estável em `codigo`.
 
 ## Referências
 - Microsoft Docs — *Choose between controller-based APIs and minimal APIs*
