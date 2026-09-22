@@ -1,6 +1,6 @@
 # ADR-0002: Microsserviços por bounded context
 
-- **Status:** Aceita
+- **Status:** Aceita — complementada por [ADR-0017](0017-contexto-plataforma-onboarding-planos.md)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0004](0004-comunicacao-assincrona-rabbitmq.md), [ADR-0007](0007-sql-server-ef-core-database-per-service.md), [ADR-0010](0010-separacao-consolidado-api-worker.md)
@@ -70,6 +70,10 @@ O requisito **RNF-01** exige que uma falha no Consolidado **não afete** Lançam
 | Aprisionamento a fornecedor | Nenhum | Nenhum | Nenhum | Alto |
 
 > **Nota:** para um produto em estágio inicial sem o RNF-01, o **monólito modular** seria a recomendação, com extração de serviços quando necessário. O requisito explícito de isolamento é o que justifica pagar o custo dos microsserviços desde o início.
+
+## Atualizações
+
+- **2026-09-22 — SaaS:** com a decisão de oferecer o produto como SaaS multi-tenant, surge um terceiro contexto, **Plataforma** (`Tenants.Api`: onboarding, planos, quotas), detalhado na [ADR-0017](0017-contexto-plataforma-onboarding-planos.md). O princípio desta ADR se mantém: **nenhuma dependência síncrona entre contextos**. A quota chega a Lançamentos por evento.
 
 ## Referências
 - Eric Evans — *Domain-Driven Design* (bounded contexts)

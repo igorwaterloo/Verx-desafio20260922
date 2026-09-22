@@ -1,6 +1,6 @@
 # ADR-0006: Cache-aside com Redis e fallback para o banco
 
-- **Status:** Aceita
+- **Status:** Aceita — complementada por [ADR-0015](0015-multi-tenancy-banco-compartilhado.md)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0010](0010-separacao-consolidado-api-worker.md), [requisitos não funcionais](../requisitos-nao-funcionais.md)
@@ -69,6 +69,10 @@ O Consolidado recebe **50 req/s em pico** (RNF-02), com um padrão de acesso mui
 | Invalidação por evento | n/a | ⚠️ | ✅ | ❌ | ⚠️ |
 | Resiliência a falha do cache | n/a | ✅ | ✅ (fallback) | ✅ | ✅ |
 | Complexidade | Baixa | Baixa | Média | Baixa | Alta |
+
+## Atualizações
+
+- **2026-09-22 — Multi-tenancy:** as chaves passam a ser prefixadas pelo tenant: `consolidado:{tenantId}:{yyyy-MM-dd}` e `consolidado:{tenantId}:{inicio}:{fim}`. O saldo é **por tenant (empresa)**, não por usuário, então todos os usuários do tenant compartilham a mesma entrada de cache, o que aumenta o hit ratio. Ver [ADR-0015](0015-multi-tenancy-banco-compartilhado.md).
 
 ## Referências
 - Microsoft — *Cache-Aside pattern* (Azure Architecture Center)

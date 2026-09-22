@@ -1,6 +1,6 @@
 # ADR-0007: SQL Server + EF Core com database-per-service
 
-- **Status:** Aceita
+- **Status:** Aceita — complementada por [ADR-0015](0015-multi-tenancy-banco-compartilhado.md), [ADR-0017](0017-contexto-plataforma-onboarding-planos.md)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0002](0002-microsservicos-por-bounded-context.md), [ADR-0005](0005-outbox-e-consumidor-idempotente.md), [ADR-0012](0012-estrategia-de-testes.md)
@@ -72,6 +72,10 @@ Precisamos persistir lançamentos (fonte da verdade, transacional, auditável) e
 ### Mitigações
 - Os eventos carregam os dados que o consumidor precisa (sem consultas cruzadas).
 - Documentação dos requisitos de Docker no README; o CI do GitHub Actions já tem Docker disponível.
+
+## Atualizações
+
+- **2026-09-22 — SaaS:** um terceiro banco, **`TenantsDb`**, pertence ao `Tenants.Api` ([ADR-0017](0017-contexto-plataforma-onboarding-planos.md)). Todas as tabelas de negócio ganham a coluna **`TenantId`**, com filtro global do EF Core e índices/PKs iniciados por `TenantId` ([ADR-0015](0015-multi-tenancy-banco-compartilhado.md)).
 
 ## Referências
 - Chris Richardson — *Database per service pattern*

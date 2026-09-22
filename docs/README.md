@@ -1,16 +1,16 @@
 # Documentação do Projeto
 
-Índice de toda a documentação de arquitetura e de projeto.
+Índice de toda a documentação de arquitetura e de projeto da plataforma **SaaS multi-tenant** de fluxo de caixa.
 
 ## Arquitetura
 
 | Documento | Conteúdo |
 |---|---|
-| [Modelo de domínio](dominio.md) | Linguagem ubíqua, bounded contexts, agregados, regras de negócio e eventos |
+| [Modelo de domínio](dominio.md) | Linguagem ubíqua, bounded contexts (Plataforma, Lançamentos, Consolidado), regras de multi-tenancy, agregados e eventos |
 | [C4 — Nível 1: Contexto](architecture/c4-1-contexto.md) | Usuários e sistemas externos |
 | [C4 — Nível 2: Containers](architecture/c4-2-containers.md) | Aplicações, bancos, broker, cache e protocolos |
 | [C4 — Nível 3: Componentes](architecture/c4-3-componentes.md) | Clean Architecture + CQRS em cada serviço |
-| [Fluxos de dados](architecture/fluxos.md) | Diagramas de sequência, incluindo os cenários de falha |
+| [Fluxos de dados](architecture/fluxos.md) | Diagramas de sequência: cenários de falha, onboarding, quota, isolamento e rate limit por tenant |
 | [Implantação](architecture/deployment.md) | Docker Compose local e visão alvo em produção (Azure) |
 | [Modelo Structurizr DSL](architecture/workspace.dsl) | Fonte formal do modelo C4 |
 
@@ -18,7 +18,7 @@
 
 | Documento | Conteúdo |
 |---|---|
-| [Requisitos não funcionais](requisitos-nao-funcionais.md) | SLOs, métricas, capacidade, RPO/RTO |
+| [Requisitos não funcionais](requisitos-nao-funcionais.md) | SLOs, métricas, capacidade, RPO/RTO, requisitos de SaaS (isolamento, noisy neighbor, LGPD) |
 | [ADRs](adr/README.md) | Registro de decisões arquiteturais |
 
 ## Qualidade e evolução

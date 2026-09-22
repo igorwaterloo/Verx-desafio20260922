@@ -1,6 +1,6 @@
 # ADR-0008: Autenticação com Keycloak (OIDC) e autorização por JWT
 
-- **Status:** Aceita
+- **Status:** Aceita — complementada por [ADR-0015](0015-multi-tenancy-banco-compartilhado.md), [ADR-0017](0017-contexto-plataforma-onboarding-planos.md)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0009](0009-api-gateway-yarp.md), [requisitos não funcionais — segurança](../requisitos-nao-funcionais.md#7-segurança-requisitos)
@@ -60,6 +60,19 @@ O desafio pede proteção de dados e sistemas com **autenticação, autorizaçã
 - Realm exportado em JSON e importado no start (reprodutível).
 - JWKS em cache nos serviços (sem chamada ao IdP a cada requisição).
 - Em produção: Keycloak em cluster ou IdP gerenciado.
+
+## Atualizações
+
+- **2026-09-22 — SaaS multi-tenant:** a decisão por Keycloak/OIDC se mantém, com os ajustes abaixo.
+
+| Aspecto | Antes | Agora |
+|---|---|---|
+| Tenant | — | Cada empresa é uma **Organization** do Keycloak |
+| Identidade do dado | `ComercianteId` = `sub` | **`TenantId`** = claim `tenant_id`; `sub` identifica o **usuário** (auditoria: `CriadoPor`) |
+| Plano | — | Claim `plano` (usada pelo gateway no rate limit) |
+| Roles | `comerciante` | **`admin`** (gerencia usuários/plano, estorna) e **`operador`** (lança e consulta) |
+| Usuários de teste | `comerciante` | Tenants de demonstração com um usuário `admin` e um `operador` cada (documentados no README) |
+| Provisionamento | Manual (realm importado) | Autoatendimento via `Tenants.Api` + Keycloak Admin API (conta de serviço com permissões mínimas) |
 
 ## Referências
 - RFC 6749 (OAuth 2.0), RFC 7636 (PKCE), OpenID Connect Core 1.0

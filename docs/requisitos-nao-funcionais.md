@@ -9,6 +9,16 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | RNF-01 | "O serviço de controle de lançamento não deve ficar indisponível se o sistema de consolidado diário cair." | Zero acoplamento síncrono de Lançamentos com o Consolidado. Falhas no Consolidado não podem produzir erros no registro de lançamentos. |
 | RNF-02 | "Em dias de picos, o serviço de consolidado diário recebe 50 requisições por segundo, com no máximo 5% de perda de requisições." | Consolidado.Api sustenta **50 req/s** com taxa de erro (HTTP 5xx, timeouts, conexões recusadas) **≤ 5%**. A meta interna é mais rígida: **< 1%**. |
 
+### Requisitos derivados da decisão de SaaS ([ADR-0015](adr/0015-multi-tenancy-banco-compartilhado.md), [ADR-0017](adr/0017-contexto-plataforma-onboarding-planos.md))
+
+| ID | Requisito |
+|---|---|
+| RNF-03 | **Isolamento entre tenants:** nenhum dado de um tenant pode ser lido, alterado ou inferido por outro. |
+| RNF-04 | **Noisy neighbor:** o consumo excessivo de um tenant não pode degradar o serviço dos demais. |
+| RNF-05 | **Onboarding em autoatendimento**, consistente (sem tenant parcialmente criado). |
+| RNF-06 | **Limites por plano** (quota de lançamentos, usuários e taxa de requisições) aplicados sem criar dependência síncrona entre serviços. |
+| RNF-07 | **LGPD:** dados por tenant identificáveis para exportação e exclusão; nenhum dado pessoal em logs. |
+
 ## 2. SLOs (Service Level Objectives)
 
 | ID | SLI (indicador) | SLO (meta) | Como medir |
@@ -21,6 +31,9 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | SLO-06 | Latência de Lançamentos (POST) | p95 **< 300 ms** | Threshold k6 |
 | SLO-07 | Atraso da consolidação (lançamento → saldo atualizado) | p95 **< 5 s** em operação normal | Diferença entre `ocorridoEm` do evento e o commit do saldo (métrica customizada `consolidado.lag`) |
 | SLO-08 | Integridade do saldo | **100%**: saldo = Σ créditos − Σ débitos, sem duplicidade | Testes de integração (entrega duplicada e fora de ordem) + reconciliação |
+| SLO-09 | Isolamento entre tenants | **Zero** vazamentos | Testes de integração de isolamento obrigatórios em cada serviço (leitura, listagem, estorno, consolidado, cache) + teste de arquitetura (`ITenantEntity`) |
+| SLO-10 | Noisy neighbor | Tenant B mantém SLO-04/05 enquanto o tenant A excede o próprio limite | k6 com dois tenants simultâneos: A recebe 429, B sem degradação |
+| SLO-11 | Onboarding | p95 **< 3 s** com status `Ativo`; tenants `Pendente` resolvidos em **< 10 min** | Métricas `tenants.provisionamento.duracao` e `tenants.pendentes` |
 
 ## 3. Confiabilidade, Integridade e Disponibilidade
 
@@ -28,7 +41,7 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 |---|---|---|
 | **Disponibilidade** | Lançamentos 99,9%; Consolidado 99,5% | Serviços independentes; réplicas atrás do gateway com health check ativo; `restart` automático; fila durável como buffer. |
 | **Confiabilidade** | Nenhum lançamento aceito é perdido; todo evento é aplicado | Transactional Outbox (at-least-once), retry com backoff, DLQ monitorada, consumidor idempotente. |
-| **Integridade** | Saldo sempre exato; nenhum dado de outro comerciante é acessível | Inbox (exactly-once no efeito), `decimal(18,2)` (sem ponto flutuante), concorrência otimista (`rowversion`), lançamentos imutáveis, filtro por `ComercianteId` vindo do token. |
+| **Integridade** | Saldo sempre exato; nenhum dado de outro tenant é acessível | Inbox (exactly-once no efeito), `decimal(18,2)` (sem ponto flutuante), concorrência otimista (`rowversion`), lançamentos imutáveis, filtro global por `TenantId` vindo do token, onboarding com compensação. |
 
 ## 4. Recuperação
 
@@ -47,7 +60,7 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 - **Disponibilidade composta** (aproximação com falhas independentes): duas réplicas a 99% cada dão `1 − 0,01² = 99,99%` na camada de API.
 
 **Lançamentos:**
-- Premissa de pico de **20 escritas/s** por comerciante ativo (ordem de grandeza de um varejo de alto movimento). Cada escrita é uma transação curta com 3 INSERTs.
+- Premissa de pico de **20 escritas/s** por tenant ativo de alto movimento, com a soma de todos os tenants na ordem de centenas de escritas/s. Cada escrita é uma transação curta (quota + 3 INSERTs); a contagem da quota usa o índice `(TenantId, CriadoEm)`.
 - O outbox publica em lote. O RabbitMQ absorve dezenas de milhares de mensagens/s, então o broker não é gargalo nessa escala.
 
 > As premissas acima são **validadas nos testes de stress** (Fase 8), e os resultados são registrados em [`testes.md`](testes.md).
@@ -60,7 +73,8 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | Balanceamento de carga | Gateway (YARP: round-robin + health check ativo/passivo) | Distribui carga e isola réplicas com falha. |
 | Cache-aside com TTL + invalidação por evento | Consolidado.Api / Worker | Reduz a latência e a carga no banco; dado desatualizado é limitado pelo TTL. |
 | CQRS: leitura separada da escrita | Consolidado.Api × Worker | Picos de leitura não competem com o processamento de eventos. |
-| Consultas sem tracking + índices | EF Core / SQL Server | Leituras baratas; índice `(ComercianteId, Data)`. |
+| Consultas sem tracking + índices | EF Core / SQL Server | Leituras baratas; PKs e índices iniciados por `TenantId` (ex.: `(TenantId, Data)`). |
+| Rate limiting por tenant/plano | Gateway | Isola tenants entre si (RNF-04); limites Free 20 req/s e Pro 100 req/s. |
 | Connection pooling / `DbContext` pooling | Todos os serviços | Reduz o custo por requisição. |
 | Rate limiting | Gateway | Protege contra abuso sem descartar o tráfego legítimo de pico. |
 | Timeouts, retry e circuit breaker | Gateway → serviços; serviços → Redis | Evita falhas em cascata e requisições presas. |
@@ -70,12 +84,14 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | ID | Requisito |
 |---|---|
 | SEG-01 | Toda API exige **JWT válido** (emissor Keycloak, audiência, assinatura, expiração), validado no gateway e nos serviços. |
-| SEG-02 | Autorização por role (`comerciante`) e por dono do dado (`ComercianteId` = `sub` do token). |
+| SEG-02 | Autorização por papel (`admin`, `operador`) e por **tenant** (`TenantId` = claim `tenant_id`; nunca aceito do corpo, da query ou de headers). Recurso de outro tenant responde 404. |
 | SEG-03 | Tráfego externo somente via **HTTPS/TLS 1.2+**. |
 | SEG-04 | Nenhum segredo no repositório; configuração por variáveis de ambiente/secret store. |
 | SEG-05 | Validação de entrada em todos os endpoints; acesso a dados apenas parametrizado (EF Core). |
-| SEG-06 | Rate limiting por usuário/IP; headers de segurança (HSTS, `X-Content-Type-Options`, CSP na SPA). |
-| SEG-07 | Logs sem dados sensíveis (tokens nunca são logados). |
+| SEG-06 | Rate limiting por tenant (plano), por usuário e por IP nas rotas públicas (onboarding); headers de segurança (HSTS, `X-Content-Type-Options`, CSP na SPA). |
+| SEG-07 | Logs sem dados sensíveis (tokens e senhas nunca são logados; a senha do admin no onboarding só é repassada ao Keycloak). |
+| SEG-08 | Conta de serviço do Tenants.Api no Keycloak com **permissões mínimas** (gerenciar organizações e usuários do realm). |
+| SEG-09 | Isolamento de tenant em profundidade: filtro global do EF Core, interceptor de gravação, chaves de cache por tenant, testes de isolamento ([ADR-0015](adr/0015-multi-tenancy-banco-compartilhado.md)). |
 
 Detalhamento de ameaças e controles: `seguranca.md` (Fase 6).
 
@@ -84,7 +100,7 @@ Detalhamento de ameaças e controles: `seguranca.md` (Fase 6).
 | Sinal | Ferramenta | Exemplos |
 |---|---|---|
 | **Traces** distribuídos | OpenTelemetry → Aspire Dashboard | Um único trace do POST de lançamento até a atualização do saldo, com o contexto propagado pelo RabbitMQ. |
-| **Métricas** | OpenTelemetry (Meter) | RPS, latência p95/p99, taxa de erro, cache hit ratio, profundidade da fila e da DLQ, `consolidado.lag`. |
+| **Métricas** | OpenTelemetry (Meter) | RPS, latência p95/p99, taxa de erro, cache hit ratio, profundidade da fila e da DLQ, `consolidado.lag`, uso de quota e 429 **por tenant/plano**, `tenants.pendentes`. |
 | **Logs** estruturados | Serilog → OTLP | Correlacionados por `TraceId`. |
 | **Health checks** | ASP.NET Core HealthChecks | `/health/live` (processo) e `/health/ready` (dependências). |
 
@@ -94,3 +110,5 @@ Detalhamento de ameaças e controles: `seguranca.md` (Fase 6).
 - Profundidade da DLQ > 0.
 - `consolidado.lag` p95 > 30 s.
 - Réplicas saudáveis < 2.
+- Tenants em `Pendente` há mais de 10 min.
+- Qualquer falha nos testes de isolamento no pipeline **bloqueia o deploy**.

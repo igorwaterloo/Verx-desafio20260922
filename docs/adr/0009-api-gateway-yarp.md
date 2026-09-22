@@ -1,6 +1,6 @@
 # ADR-0009: API Gateway com YARP
 
-- **Status:** Aceita
+- **Status:** Aceita — complementada por [ADR-0015](0015-multi-tenancy-banco-compartilhado.md), [ADR-0017](0017-contexto-plataforma-onboarding-planos.md)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0008](0008-autenticacao-keycloak-oidc-jwt.md), [ADR-0010](0010-separacao-consolidado-api-worker.md)
@@ -62,6 +62,10 @@ A SPA consome dois serviços, e o Consolidado roda com **várias réplicas** (RN
 ### Mitigações
 - O gateway é stateless e barato de replicar: em produção, 2+ réplicas atrás do load balancer da plataforma.
 - Timeouts e limites bem definidos para o gateway não acumular requisições.
+
+## Atualizações
+
+- **2026-09-22 — SaaS:** o rate limiting passa a ser **particionado por tenant** (claim `tenant_id`), com o limite definido pela claim `plano` (Free: 20 req/s; Pro: 100 req/s), mais um limite por usuário para evitar abuso de um único usuário. As rotas públicas de onboarding (`POST /api/v1/tenants`, `GET /api/v1/planos`) têm limite **por IP** rigoroso. Nova rota: `/api/v1/tenants/**` e `/api/v1/planos/**` → cluster `tenants`. Estouro do limite responde **429** com `Retry-After`.
 
 ## Referências
 - [YARP — Yet Another Reverse Proxy](https://github.com/dotnet/yarp)
