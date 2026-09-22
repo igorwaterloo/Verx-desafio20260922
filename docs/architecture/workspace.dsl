@@ -32,7 +32,7 @@ workspace "Fluxo de Caixa Diário (SaaS)" "Plataforma SaaS multi-tenant para con
                     tHandlers = component "Command/Query Handlers" "ProvisionarTenant, AlterarPlano, AdicionarUsuario, ListarPlanos." "Application"
                     tDominio = component "Domínio" "Agregado Tenant, value object Cnpj, catálogo de Planos, regras RP-01..RP-05." "Domain"
                     tKeycloak = component "Keycloak Admin Client" "Cria Organization e usuários; retry e compensação." "Infrastructure / HttpClient + Polly"
-                    tProvisionamentoJob = component "Job de Provisionamento" "Reprocessa tenants Pendentes com backoff." "BackgroundService"
+                    tProvisionamentoJob = component "Job de Expiração" "Compensa e marca Falhou os tenants Pendentes há mais de 24 h." "BackgroundService"
                     tRepo = component "Repositório + Outbox" "Persistência EF Core e publicação de eventos." "Infrastructure / EF Core + MassTransit"
                 }
                 tenantsDb = container "TenantsDb" "Tenants, planos e outbox." "SQL Server 2022" "Database"
@@ -115,7 +115,7 @@ workspace "Fluxo de Caixa Diário (SaaS)" "Plataforma SaaS multi-tenant para con
         fluxoCaixa.tenantsApi.tHandlers -> fluxoCaixa.tenantsApi.tDominio "Executa regras"
         fluxoCaixa.tenantsApi.tHandlers -> fluxoCaixa.tenantsApi.tKeycloak "Provisiona identidade"
         fluxoCaixa.tenantsApi.tHandlers -> fluxoCaixa.tenantsApi.tRepo "Persiste + outbox"
-        fluxoCaixa.tenantsApi.tProvisionamentoJob -> fluxoCaixa.tenantsApi.tHandlers "Reprocessa pendentes"
+        fluxoCaixa.tenantsApi.tProvisionamentoJob -> fluxoCaixa.tenantsApi.tHandlers "Expira pendentes antigos"
         fluxoCaixa.tenantsApi.tKeycloak -> keycloak "Admin REST API" "HTTPS"
         fluxoCaixa.tenantsApi.tRepo -> fluxoCaixa.tenantsDb "SQL" "TDS"
         fluxoCaixa.tenantsApi.tRepo -> fluxoCaixa.broker "Publica" "AMQP"

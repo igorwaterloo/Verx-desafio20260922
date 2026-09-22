@@ -61,7 +61,7 @@ flowchart TB
         handlers["<b>Command/Query Handlers</b><br/><i>[Application]</i><br/>ProvisionarTenant, AlterarPlano,<br/>AdicionarUsuario, ListarPlanos"]
         dom["<b>Domínio</b><br/><i>[Domain]</i><br/>Tenant, Cnpj, Plano,<br/>RP-01..05"]
         kc["<b>Keycloak Admin Client</b><br/><i>[Infrastructure]</i><br/>Organization, usuários,<br/>retry + compensação"]
-        job["<b>Job de Provisionamento</b><br/><i>[BackgroundService]</i><br/>Reprocessa Pendentes"]
+        job["<b>Job de Expiração</b><br/><i>[BackgroundService]</i><br/>Compensa pendentes > 24 h"]
         repo["<b>Repositório + Outbox</b><br/><i>[Infrastructure / EF Core]</i>"]
     end
 
@@ -95,7 +95,7 @@ flowchart TB
 | Handlers | `ProvisionarTenant` orquestra a saga: `Pendente` → Keycloak → `Ativo` + evento, ou compensação. | Saga orquestrada, Result pattern |
 | Domínio | Validação de CNPJ, transições de status, limites do plano. | DDD Aggregate, Value Object |
 | Keycloak Admin Client | Porta `IIdentityProvisioner` implementada com HttpClient + resiliência; conta de serviço com permissões mínimas. | Adapter, Retry, Compensating Transaction |
-| Job de Provisionamento | Reconciliação periódica de tenants `Pendente`. | Scheduler Agent Supervisor |
+| Job de Expiração | A cada 10 min, compensa (remove usuários e organização) e marca `Falhou` os tenants `Pendente` há mais de 24 h. | Scheduler Agent Supervisor, Compensating Transaction |
 | Repositório + Outbox | Persistência e publicação confiável dos eventos. | Transactional Outbox |
 
 ---

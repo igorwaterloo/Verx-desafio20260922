@@ -1,6 +1,6 @@
 # ADR-0017: Contexto Plataforma — onboarding de tenants, planos e quotas
 
-- **Status:** Aceita
+- **Status:** Aceita — atualizada em 2026-09-22 (ver Atualizações)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0002](0002-microsservicos-por-bounded-context.md), [ADR-0005](0005-outbox-e-consumidor-idempotente.md), [ADR-0008](0008-autenticacao-keycloak-oidc-jwt.md), [ADR-0009](0009-api-gateway-yarp.md), [ADR-0015](0015-multi-tenancy-banco-compartilhado.md)
@@ -102,6 +102,16 @@ A senha do admin só é **repassada ao Keycloak**; ela nunca é persistida nem l
 - Retry com backoff + job de reconciliação de tenants `Pendente`.
 - Janelas de inconsistência documentadas e aceitáveis para o negócio (quotas mensais, não transacionais).
 - Métricas de onboarding (tempo, falhas, pendentes).
+
+## Atualizações
+
+- **2026-09-22 — Implementação (Fase 5.5):**
+  - **Falha transitória → 503 retomável, em vez de 202 + job que conclui.** Para o job concluir o cadastro sozinho, ele precisaria da senha do admin, e isso exigiria persisti-la (mesmo cifrada), contrariando o RP-03. A decisão foi: com o Keycloak indisponível (após timeout de 3 s e 2 retries), a API responde **503** e o tenant fica `Pendente`; **reenviar o mesmo cadastro retoma** o provisionamento. Todas as operações no Keycloak são idempotentes: organização e usuário são buscados pelo atributo `tenant_id` antes de criar, e um usuário existente do mesmo tenant é reaproveitado.
+  - **Job de expiração:** a cada 10 min, tenants `Pendente` há mais de 24 h são compensados (remoção dos usuários e da organização) e marcados `Falhou`.
+  - **Compensação completa:** remove os usuários com o `tenant_id` do tenant e a organização, cobrindo falhas depois da criação do usuário.
+  - **Claim `plano`:** vem do atributo do usuário (não da Organization). A troca de plano atualiza a organização e **cada membro** (no máximo 20), e só então grava o plano e publica `PlanoDoTenantAlterado`; se o Keycloak falhar, nada muda (503).
+  - **Tenants de demonstração:** na inicialização local, os tenants do realm são registrados no TenantsDb e `TenantProvisionado` é publicado, para que o Lançamentos aplique as quotas corretas (Padaria Free, Mercado Pro).
+  - Validado em integração com Keycloak real (Testcontainers) e ponta a ponta no compose: onboarding → login → lançamento → consolidado → upgrade para Pro refletido no token e na quota.
 
 ## Referências
 - Chris Richardson — *Saga pattern* (orquestração com compensação)

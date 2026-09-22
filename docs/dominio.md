@@ -91,7 +91,7 @@ flowchart LR
 | # | Regra |
 |---|---|
 | RP-01 | O CNPJ deve ser válido e não pode estar cadastrado para outro tenant. |
-| RP-02 | O onboarding cria o tenant `Pendente` e só o torna `Ativo` depois de criar a Organization e o usuário `admin` no Keycloak. Em falha definitiva, compensa (remove o que foi criado) e marca `Falhou`. |
+| RP-02 | O onboarding cria o tenant `Pendente` e só o torna `Ativo` depois de criar a Organization e o usuário `admin` no Keycloak. Em falha definitiva, compensa (remove o que foi criado) e marca `Falhou`. Com o Keycloak indisponível, responde 503 e o reenvio do mesmo cadastro retoma o provisionamento; pendentes com mais de 24 h são compensados e marcados `Falhou`. |
 | RP-03 | A senha do admin é repassada ao Keycloak e **nunca é persistida nem logada**. |
 | RP-04 | O admin só pode criar usuários até o limite do plano. |
 | RP-05 | Trocar para um plano com limite de usuários menor que o número atual de usuários é rejeitado. |

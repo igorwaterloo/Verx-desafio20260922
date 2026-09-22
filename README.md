@@ -10,6 +10,7 @@ Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa 
 - [Stack](#stack)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Como executar localmente](#como-executar-localmente)
+- [API de Tenants (Plataforma)](#api-de-tenants-plataforma)
 - [API de Lançamentos](#api-de-lançamentos)
 - [API de Consolidado](#api-de-consolidado)
 - [Testes](#testes)
@@ -159,6 +160,7 @@ O mesmo `docker compose up -d` (a partir de `deploy/`) compila as imagens e sobe
 
 | Serviço | Endereço | Documentação da API |
 |---|---|---|
+| Tenants.Api | http://localhost:5301 | http://localhost:5301/scalar |
 | Lancamentos.Api | http://localhost:5101 | http://localhost:5101/scalar |
 | Consolidado.Api (réplicas 1 e 2) | http://localhost:5201 · http://localhost:5202 | http://localhost:5201/scalar |
 | Consolidado.Worker | — (interno) | — |
@@ -167,7 +169,30 @@ Cada API expõe `/health/live`, `/health/ready` e, em desenvolvimento, o OpenAPI
 
 Para executar fora do container (com a infraestrutura do passo 1 no ar): `dotnet run --project src/api/Lancamentos/Lancamentos.Api`.
 
-> O serviço de Tenants, o Gateway (que passa a ser a entrada única e balanceia as réplicas do Consolidado) e o frontend entram no compose nas próximas fases.
+> O Gateway (que passa a ser a entrada única e balanceia as réplicas do Consolidado) e o frontend entram no compose nas próximas fases.
+
+## API de Tenants (Plataforma)
+
+Cadastro da empresa em autoatendimento, planos e usuários. O cadastro cria a **Organization** e o usuário **admin** no Keycloak; o admin já pode fazer login e usar a plataforma.
+
+| Método e rota | Acesso | Respostas |
+|---|---|---|
+| `GET /api/v1/planos` | público | 200 (Free e Pro, com quotas e rate limit) |
+| `POST /api/v1/tenants` | público | 201 `Ativo`; 400; 409 (CNPJ ou e-mail já usados); **503** se o Keycloak estiver fora — reenvie o mesmo cadastro para concluir |
+| `GET /api/v1/tenants/atual` | operador | 200 |
+| `PUT /api/v1/tenants/atual/plano` | admin | 200; 409 (mesmo plano); 422 (usuários acima do limite do novo plano) |
+| `GET /api/v1/tenants/atual/usuarios` | admin | 200 |
+| `POST /api/v1/tenants/atual/usuarios` | admin | 201; 409 (e-mail em uso); 422 (limite de usuários do plano) |
+
+```bash
+curl -X POST http://localhost:5301/api/v1/tenants -H "Content-Type: application/json" -d '{
+  "razaoSocial": "Acougue Boa Carne Ltda", "nomeFantasia": "Acougue Boa Carne",
+  "cnpj": "11.222.333/0001-81", "plano": "free",
+  "administrador": { "nome": "Ana Souza", "email": "ana@acougue.dev", "senha": "Senha@123" }
+}'
+```
+
+A troca de plano chega ao Lançamentos pelo evento `PlanoDoTenantAlterado` (nova quota em segundos) e ao token no próximo login/refresh (claim `plano`).
 
 ## API de Lançamentos
 
@@ -236,6 +261,9 @@ Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (er
 | `Consolidado.Domain.UnitTests` | `SaldoDiario` (aplicação comutativa, estorno), inbox |
 | `Consolidado.Application.UnitTests` | Aplicação idempotente de eventos, cache-aside e TTLs, período com dias preenchidos |
 | `Consolidado.IntegrationTests` | Evento → worker → consulta com SQL Server, RabbitMQ e Redis reais: duplicidade, isolamento, cache e **Redis fora do ar** |
+| `Tenants.Domain.UnitTests` | CNPJ, catálogo de planos, agregado `Tenant` (ciclo de vida, RP-05) |
+| `Tenants.Application.UnitTests` | Onboarding como saga (compensação, retomada, 503), plano, usuários, expiração |
+| `Tenants.IntegrationTests` | Onboarding e gestão com **Keycloak real**: login do admin criado, compensação, Keycloak fora do ar |
 | `Lancamentos.IntegrationTests` | API de ponta a ponta com SQL Server e RabbitMQ reais (Testcontainers): outbox, isolamento entre tenants, quota via evento e **registro com o RabbitMQ fora do ar** |
 
 Estratégia completa: [docs/testes.md](docs/testes.md).
@@ -252,7 +280,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 3 — Estrutura da solução (inclui building blocks de multi-tenancy)
 - [x] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
 - [x] Fase 5 — Serviço de Consolidado
-- [ ] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
+- [x] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
 - [ ] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
 - [ ] Fase 7 — Frontend Angular (inclui cadastro da empresa e gestão de usuários)
 - [ ] Fase 8 — Testes de stress e resiliência (inclui noisy neighbor)

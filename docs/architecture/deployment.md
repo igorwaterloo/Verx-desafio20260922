@@ -56,7 +56,7 @@ flowchart TB
 |---|---|---|---|---|
 | `web` | nginx:alpine (build multi-stage) | 4200 | `GET /` | SPA |
 | `gateway` | .NET 10 (build) | 8080 | `/health/ready` | Única porta de API exposta para a SPA |
-| `tenants-api` | .NET 10 (build) | 5301 (debug) | `/health/ready` | Onboarding, planos, usuários; usa a Admin API do Keycloak |
+| `tenants-api` | `src/api/Dockerfile` | 5301 | `/health/ready` (SQL Server + RabbitMQ) | Onboarding, planos e usuários; Admin API do Keycloak pela rede interna com a conta de serviço; aplica migrations e **semeia os tenants de demonstração** (publica os planos para o Lançamentos) |
 | `lancamentos-api` | `src/api/Dockerfile` (aspnet:10.0, usuário não-root) | 5101 | `/health/ready` (SQL Server + RabbitMQ) | Aplica as migrations na inicialização; consome eventos de tenant/plano; valida JWT com JWKS pelo endereço interno do Keycloak |
 | `consolidado-api-1/2` | `src/api/Dockerfile` | 5201 / 5202 (depuração) | `/health/ready` (SQL Server) | Somente leitura, com cache Redis; o tráfego da aplicação passa pelo gateway; duas instâncias explícitas para demonstrar balanceamento e failover. Redis fora deixa o health `Degraded`, sem tirar a réplica do balanceamento |
 | `consolidado-worker` | `src/api/Dockerfile` | — | `/health/ready` (SQL Server + RabbitMQ) | Host web mínimo (apenas health checks); consome `LancamentoRegistrado` e **aplica as migrations do ConsolidadoDb** (é o escritor da projeção) |

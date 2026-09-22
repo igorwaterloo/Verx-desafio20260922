@@ -55,6 +55,10 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Consolidado — aplicação | 14 | Inbox, invalidação após o commit, cache-aside com TTL por tipo de dia, zeros (RC-03), período (máx. 93 dias) |
 | Consolidado — integração | 11 | Evento → worker → consulta; **evento duplicado aplicado uma vez**; isolamento; cache populado e invalidado; **Redis pausado sem erro** |
 
+| Tenants — domínio | 26 | CNPJ com dígitos verificadores, catálogo de planos, ciclo Pendente → Ativo/Falhou, RP-05 |
+| Tenants — aplicação | 17 | Saga de onboarding (compensação, retomada, 503), troca de plano, limite de usuários, expiração |
+| Tenants — integração | 9 | **Keycloak real**: admin criado faz login com as claims do tenant; compensação; Keycloak pausado → 503 → reenvio conclui; plano refletido no token |
+
 ### Cenários de integração de Lançamentos
 
 | Cenário | Resultado esperado |
@@ -81,6 +85,18 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Consulta → novo evento | Cache populado e invalidado; nova consulta reflete o evento |
 | Redis pausado | 200 pelo banco, em menos de 2 s (disjuntor) |
 
+### Cenários de integração do Tenants
+
+| Cenário | Resultado esperado |
+|---|---|
+| Onboarding válido | 201 `Ativo`; o admin faz login com `tenant_id`, `plano` e papéis `admin`/`operador`; `TenantProvisionado` publicado |
+| CNPJ já cadastrado | 409 `tenant.cnpj_ja_cadastrado` |
+| E-mail de admin de outro tenant | 409, compensação, tenant `Falhou` (novo reenvio: `tenant.provisionamento_falhou`) |
+| Keycloak pausado | 503 `tenant.identidade_indisponivel`; reenvio após o retorno conclui (201) |
+| Troca de plano | 403 para operador; admin: 200, evento publicado e claim `plano` atualizada no novo token |
+| Usuários no plano Free | Admin + 1 operador; o terceiro retorna 422 `tenant.limite_usuarios` |
+| Tenants de demonstração | Semeados na inicialização com os planos do realm |
+
 ## Verificação ponta a ponta (compose, tokens reais)
 
 | Verificação | Resultado |
@@ -88,6 +104,8 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | POST no Lançamentos → saldo visível no Consolidado (SLO-07 < 5 s) | 250–350 ms em regime; ~4,9 s na primeira requisição após subir os containers (cold start) |
 | Consolidado inteiro parado (api-1, api-2, worker) | Consulta indisponível; **10/10 lançamentos com 201** (RNF-01) |
 | Consolidado religado | Backlog processado; saldo convergiu com os 10 lançamentos |
+| Empresa nova por autoatendimento | 201 `Ativo` → login do admin com as claims do tenant → lançamento 201 → saldo no Consolidado |
+| Upgrade Free → Pro | Novo token com `plano=pro` e projeção do plano no LancamentosDb atualizada por evento (limite 50.000) |
 
 ## Resultados de carga
 
