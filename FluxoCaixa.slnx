@@ -29,4 +29,10 @@
     <Project Path="src/Services/Tenants/Tenants.Domain/Tenants.Domain.csproj" />
     <Project Path="src/Services/Tenants/Tenants.Infrastructure/Tenants.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
+    <Project Path="tests/FluxoCaixa.Application.Common.UnitTests/FluxoCaixa.Application.Common.UnitTests.csproj" />
+    <Project Path="tests/FluxoCaixa.Infrastructure.Common.UnitTests/FluxoCaixa.Infrastructure.Common.UnitTests.csproj" />
+    <Project Path="tests/FluxoCaixa.SharedKernel.UnitTests/FluxoCaixa.SharedKernel.UnitTests.csproj" />
+  </Folder>
 </Solution>
