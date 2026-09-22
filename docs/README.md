@@ -31,8 +31,9 @@
 ## Como visualizar os diagramas
 
 - **No GitHub:** os diagramas Mermaid são renderizados automaticamente nos arquivos `.md`.
-- **Structurizr Lite** (modelo completo e interativo, requer Docker):
+- **Structurizr local** (modelo completo e interativo, requer Docker):
   ```bash
-  docker run -it --rm -p 8090:8080 -v "$(pwd)/docs/architecture:/usr/local/structurizr" structurizr/lite
+  docker run -it --rm -p 8090:8080 -v "$(pwd)/docs/architecture:/usr/local/structurizr" structurizr/structurizr local
   ```
+  Para validar o DSL: `docker run --rm -v "$(pwd)/docs/architecture:/usr/local/structurizr" structurizr/structurizr validate -workspace /usr/local/structurizr/workspace.dsl`
   Depois acesse http://localhost:8090.

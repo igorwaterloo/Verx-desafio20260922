@@ -75,6 +75,7 @@ Precisamos persistir lançamentos (fonte da verdade, transacional, auditável) e
 
 ## Atualizações
 
+- **2026-09-22 — Imagem:** a versão do SQL Server é fixada por tag (`mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04`) em vez de `2022-latest`, para builds reproduzíveis.
 - **2026-09-22 — SaaS:** um terceiro banco, **`TenantsDb`**, pertence ao `Tenants.Api` ([ADR-0017](0017-contexto-plataforma-onboarding-planos.md)). Todas as tabelas de negócio ganham a coluna **`TenantId`**, com filtro global do EF Core e índices/PKs iniciados por `TenantId` ([ADR-0015](0015-multi-tenancy-banco-compartilhado.md)).
 
 ## Referências

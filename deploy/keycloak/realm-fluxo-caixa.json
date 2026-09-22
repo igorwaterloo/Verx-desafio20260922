@@ -1,0 +1,409 @@
+{
+  "realm": "fluxo-caixa",
+  "displayName": "Fluxo de Caixa (SaaS)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "organizationsEnabled": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "roles": {
+    "realm": [
+      {
+        "name": "operador",
+        "description": "Registra lançamentos e consulta o consolidado."
+      },
+      {
+        "name": "admin",
+        "description": "Gerencia usuários e plano do tenant e estorna lançamentos. Inclui operador.",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "operador"
+          ]
+        }
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fluxo-caixa-web",
+      "name": "Fluxo de Caixa — SPA Angular",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "plano",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "plano",
+            "claim.name": "plano",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience-fluxo-caixa-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "fluxo-caixa-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "basic",
+        "profile",
+        "email"
+      ]
+    },
+    {
+      "clientId": "fluxo-caixa-testes",
+      "name": "Testes locais (password grant) — somente desenvolvimento",
+      "description": "Usado por testes automatizados e k6 para obter tokens. Nunca habilitar em produção.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "plano",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "plano",
+            "claim.name": "plano",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience-fluxo-caixa-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "fluxo-caixa-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "basic",
+        "profile",
+        "email"
+      ]
+    },
+    {
+      "clientId": "fluxo-caixa-tenants",
+      "name": "Tenants.Api — conta de serviço (Admin API)",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${TENANTS_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "basic",
+        "profile",
+        "email"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin.padaria",
+      "email": "admin@padaria.demo",
+      "firstName": "Admin",
+      "lastName": "Padaria Demo",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "0192f79e-0001-7000-8000-000000000001"
+        ],
+        "plano": [
+          "free"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Senha@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "operador.padaria",
+      "email": "operador@padaria.demo",
+      "firstName": "Operador",
+      "lastName": "Padaria Demo",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "0192f79e-0001-7000-8000-000000000001"
+        ],
+        "plano": [
+          "free"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Senha@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "operador"
+      ]
+    },
+    {
+      "username": "admin.mercado",
+      "email": "admin@mercado.demo",
+      "firstName": "Admin",
+      "lastName": "Mercado Demo",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "0192f79e-0002-7000-8000-000000000002"
+        ],
+        "plano": [
+          "pro"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Senha@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "operador.mercado",
+      "email": "operador@mercado.demo",
+      "firstName": "Operador",
+      "lastName": "Mercado Demo",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "0192f79e-0002-7000-8000-000000000002"
+        ],
+        "plano": [
+          "pro"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Senha@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "operador"
+      ]
+    },
+    {
+      "username": "service-account-fluxo-caixa-tenants",
+      "enabled": true,
+      "serviceAccountClientId": "fluxo-caixa-tenants",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "manage-realm"
+        ]
+      }
+    }
+  ],
+  "organizations": [
+    {
+      "name": "Padaria Demo",
+      "alias": "padaria-demo",
+      "enabled": true,
+      "description": "Tenant de demonstração (plano free)",
+      "attributes": {
+        "tenant_id": [
+          "0192f79e-0001-7000-8000-000000000001"
+        ],
+        "plano": [
+          "free"
+        ]
+      },
+      "domains": [
+        {
+          "name": "padaria.demo",
+          "verified": false
+        }
+      ],
+      "members": [
+        {
+          "username": "admin.padaria",
+          "membershipType": "MANAGED"
+        },
+        {
+          "username": "operador.padaria",
+          "membershipType": "MANAGED"
+        }
+      ]
+    },
+    {
+      "name": "Mercado Demo",
+      "alias": "mercado-demo",
+      "enabled": true,
+      "description": "Tenant de demonstração (plano pro)",
+      "attributes": {
+        "tenant_id": [
+          "0192f79e-0002-7000-8000-000000000002"
+        ],
+        "plano": [
+          "pro"
+        ]
+      },
+      "domains": [
+        {
+          "name": "mercado.demo",
+          "verified": false
+        }
+      ],
+      "members": [
+        {
+          "username": "admin.mercado",
+          "membershipType": "MANAGED"
+        },
+        {
+          "username": "operador.mercado",
+          "membershipType": "MANAGED"
+        }
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"unmanagedAttributePolicy\":\"ADMIN_VIEW\",\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"tenant_id\",\"displayName\":\"Tenant\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"plano\",\"displayName\":\"Plano\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  }
+}

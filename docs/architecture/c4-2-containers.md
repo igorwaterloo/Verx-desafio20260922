@@ -29,7 +29,7 @@ flowchart LR
         subgraph ctxC["Contexto Consolidado"]
             capi["<b>Consolidado.Api</b> ×2<br/><i>[.NET 10 Web API]</i><br/>Saldo diário e por período<br/>(cache-aside)"]
             worker["<b>Consolidado.Worker</b><br/><i>[.NET 10 Worker]</i><br/>Consome eventos e<br/>atualiza a projeção"]
-            redis[("<b>Redis</b><br/><i>[Redis 7]</i><br/>Cache por tenant")]
+            redis[("<b>Redis</b><br/><i>[Redis 8]</i><br/>Cache por tenant")]
             cdb[("<b>ConsolidadoDb</b><br/><i>[SQL Server 2022]</i><br/>Saldos diários + inbox")]
         end
 
@@ -86,7 +86,7 @@ flowchart LR
 | **Consolidado.Worker** | .NET 10 Worker, MassTransit, EF Core | Aplica os eventos no `SaldoDiario` do tenant de forma idempotente e invalida o cache. | Horizontal por tamanho de fila (KEDA) |
 | **Consolidado.Api** | .NET 10 Web API (controllers), EF Core, Redis | Consultas de saldo com cache-aside; se o Redis falhar, lê do banco. | **2 réplicas** localmente; HPA em produção |
 | **ConsolidadoDb** | SQL Server 2022 | Projeção de saldos por tenant e inbox. | Independente dos outros bancos |
-| **Redis** | Redis 7 | Cache das consultas de consolidado (chaves prefixadas pelo tenant). | Réplica / cluster (produção) |
+| **Redis** | Redis 8 | Cache das consultas de consolidado (chaves prefixadas pelo tenant). | Réplica / cluster (produção) |
 | **Aspire Dashboard** | OpenTelemetry (OTLP) | Observabilidade local (traces distribuídos pela fila, métricas com `tenant.id`). | Em produção: Azure Monitor |
 
 ## Como a arquitetura atende aos requisitos não funcionais
