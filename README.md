@@ -1,6 +1,6 @@
-# Verx — Desafio Arquiteto de Software: Fluxo de Caixa Diário
+# Verx — Desafio Arquiteto de Software: Fluxo de Caixa Diário (SaaS)
 
-Solução para um comerciante controlar o fluxo de caixa diário: **lançamentos** (débitos e créditos) e **relatório de saldo diário consolidado**.
+Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa diário: **lançamentos** (débitos e créditos) e **relatório de saldo diário consolidado**. Cada empresa é um tenant, com seus usuários, seu plano e seus dados isolados.
 
 > 🚧 Em construção. Este README é atualizado a cada entrega. Veja o andamento em [Roadmap](#roadmap).
 
@@ -16,22 +16,33 @@ Solução para um comerciante controlar o fluxo de caixa diário: **lançamentos
 
 ## Visão geral
 
-| Serviço | Responsabilidade |
+| Serviço | Contexto | Responsabilidade |
+|---|---|---|
+| **Tenants** | Plataforma | Onboarding de empresas (autoatendimento), planos (Free/Pro), quotas e usuários do tenant. |
+| **Lançamentos** | Core | Registra créditos, débitos e estornos do tenant, respeitando a quota do plano. **Deve permanecer disponível mesmo se o Consolidado cair.** |
+| **Consolidado** | Suporte | Mantém e expõe o saldo diário consolidado por tenant. **Suporta picos de 50 req/s com no máximo 5% de perda.** |
+
+| Papel | Pode |
 |---|---|
-| **Lançamentos** | Registra créditos e débitos (e estornos). Deve permanecer disponível mesmo se o Consolidado cair. |
-| **Consolidado** | Mantém e expõe o saldo diário consolidado. Suporta picos de 50 req/s com no máximo 5% de perda. |
+| `admin` | Cadastrar a empresa, gerenciar usuários e plano, registrar e **estornar** lançamentos, consultar o consolidado |
+| `operador` | Registrar lançamentos e consultar o consolidado |
 
 ## Arquitetura
 
-Microsserviços por bounded context com comunicação assíncrona orientada a eventos (RabbitMQ + Transactional Outbox), Clean Architecture + CQRS em cada serviço, cache Redis na leitura do consolidado e API Gateway (YARP).
+Microsserviços por bounded context com comunicação assíncrona orientada a eventos (RabbitMQ + Transactional Outbox), Clean Architecture + CQRS com Web APIs em controllers, multi-tenancy com isolamento por `TenantId`, cache Redis na leitura do consolidado e API Gateway (YARP) com rate limiting por tenant/plano.
 
 ```mermaid
 flowchart LR
-    spa["Web App<br/>(Angular)"] --> gw["API Gateway<br/>(YARP)"]
+    spa["Web App<br/>(Angular)"] --> gw["API Gateway<br/>(YARP)<br/>rate limit por tenant"]
+    gw --> tapi["Tenants.Api"]
     gw --> lapi["Lancamentos.Api"]
     gw --> capi["Consolidado.Api ×2"]
+    tapi --> tdb[("TenantsDb")]
+    tapi -- "provisiona" --> kc["Keycloak<br/>(Organizations)"]
+    tapi -- "eventos de plano" --> mq{{"RabbitMQ"}}
+    mq -- "projeção do plano" --> lapi
     lapi --> ldb[("LancamentosDb")]
-    lapi -- "outbox → evento" --> mq{{"RabbitMQ"}}
+    lapi -- "outbox → evento" --> mq
     mq --> wk["Consolidado.Worker"]
     wk --> cdb[("ConsolidadoDb")]
     wk -- "invalida" --> redis[("Redis")]
@@ -54,12 +65,12 @@ flowchart LR
 
 | Camada | Tecnologia |
 |---|---|
-| Backend | .NET 10 (C#), ASP.NET Core Minimal APIs, EF Core |
+| Backend | .NET 10 (C#), ASP.NET Core Web API (controllers), EF Core |
 | Frontend | Angular |
-| Banco de dados | SQL Server 2022 (Docker) |
-| Mensageria | RabbitMQ |
+| Banco de dados | SQL Server 2022 (Docker), database-per-service, discriminador `TenantId` |
+| Mensageria | RabbitMQ (MassTransit) |
 | Cache | Redis |
-| Identidade | Keycloak (OIDC / JWT) |
+| Identidade | Keycloak (OIDC / JWT, Organizations) |
 | Gateway | YARP |
 | Testes | xUnit, NSubstitute, Shouldly, Testcontainers, NetArchTest, k6 |
 | Infra local | Docker Compose |
@@ -85,12 +96,14 @@ _Em breve._
 - [x] Fase 0 — Setup do repositório
 - [x] Fase 1 — Diagramas C4 e definição de arquitetura
 - [x] Fase 2 — ADRs
-- [ ] Fase 3 — Estrutura da solução
-- [ ] Fase 4 — Serviço de Lançamentos
+- [x] Fase 2.5 — Revisão SaaS multi-tenant (ADRs 0015–0017, domínio, C4, fluxos, NFR)
+- [ ] Fase 3 — Estrutura da solução (inclui building blocks de multi-tenancy)
+- [ ] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
 - [ ] Fase 5 — Serviço de Consolidado
-- [ ] Fase 6 — Gateway e segurança
-- [ ] Fase 7 — Frontend Angular
-- [ ] Fase 8 — Testes de stress e resiliência
+- [ ] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
+- [ ] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
+- [ ] Fase 7 — Frontend Angular (inclui cadastro da empresa e gestão de usuários)
+- [ ] Fase 8 — Testes de stress e resiliência (inclui noisy neighbor)
 - [ ] Fase 9 — Observabilidade e CI
 - [ ] Fase 10 — Documentação final
 
