@@ -1,0 +1,11 @@
+{
+  "name": "fluxo-caixa-web-e2e",
+  "private": true,
+  "description": "Smoke E2E da SPA contra a stack do docker compose (Playwright).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
