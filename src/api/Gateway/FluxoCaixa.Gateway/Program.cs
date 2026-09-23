@@ -25,11 +25,13 @@ builder.Services
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-// Health check passivo: uma falha de transporte (conexão recusada, timeout) tira a réplica do
-// balanceamento imediatamente; ela volta após o período de reativação ou pelo health check ativo.
+// Health check passivo: a taxa de falhas de transporte (conexão recusada, timeout) numa janela curta
+// retira a réplica do balanceamento; ela volta após o período de reativação ou pelo health check ativo.
+// Como uma réplica que acabou de atender muito tráfego demora a cruzar a taxa, as leituras também são
+// reenviadas a outra réplica (RetentativaEmOutraReplica) — o cliente não vê a falha.
 builder.Services.Configure<TransportFailureRateHealthPolicyOptions>(opcoes =>
 {
-    opcoes.DetectionWindowSize = TimeSpan.FromSeconds(30);
+    opcoes.DetectionWindowSize = TimeSpan.FromSeconds(10);
     opcoes.MinimalTotalCountThreshold = 1;
     opcoes.DefaultFailureRateLimit = 0.3;
 });
@@ -50,7 +52,14 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
-app.MapReverseProxy();
+app.MapReverseProxy(proxy =>
+{
+    // Retentativa de leituras em outra réplica antes do balanceamento; em seguida, o pipeline padrão.
+    proxy.Use(RetentativaEmOutraReplica.ExecutarAsync);
+    proxy.UseSessionAffinity();
+    proxy.UseLoadBalancing();
+    proxy.UsePassiveHealthChecks();
+});
 
 await app.RunAsync();
 

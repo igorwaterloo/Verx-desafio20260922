@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -43,6 +44,15 @@ public static class WebApiDefaults
 
         services.AddHealthChecks();
         services.AddTenancy();
+
+        // Atrás do Gateway: Location e links usam o host/esquema públicos (X-Forwarded-Host/Proto do YARP).
+        // Os serviços só são alcançáveis pela rede interna, por isso o proxy não é restrito por IP.
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
         services.AddAutenticacaoKeycloak(configuration);
 
         return services;
@@ -52,6 +62,7 @@ public static class WebApiDefaults
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        app.UseForwardedHeaders();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
 

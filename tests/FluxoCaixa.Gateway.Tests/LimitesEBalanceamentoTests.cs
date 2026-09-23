@@ -79,7 +79,7 @@ public sealed class LimitesEBalanceamentoTests
     }
 
     [Fact]
-    public async Task Failover_ReplicaForaDoArSaiDoBalanceamentoEAsConsultasContinuam()
+    public async Task Failover_LeiturasSaoReenviadasAOutraReplicaSemFalhaParaOCliente()
     {
         await using var destinos = await IniciarDestinosAsync();
         await using var gateway = new GatewayFactory(destinos);
@@ -99,10 +99,45 @@ public sealed class LimitesEBalanceamentoTests
             }
         }
 
-        // No máximo a primeira requisição à réplica caída falha (502); o health check passivo a retira em seguida.
-        status.Count(s => s != HttpStatusCode.OK).ShouldBeLessThanOrEqualTo(1);
-        status.Skip(2).ShouldAllBe(s => s == HttpStatusCode.OK);
+        // A leitura que cai na réplica fora do ar é reenviada à outra: o cliente não vê nenhuma falha.
+        status.ShouldAllBe(s => s == HttpStatusCode.OK);
         servidas.ShouldAllBe(s => s == "consolidado-1");
+    }
+
+    [Fact]
+    public async Task Failover_ReplicaQueAtendeuMuitoTrafegoECai_LeiturasContinuamSemFalha()
+    {
+        // Cenário encontrado na verificação ponta a ponta: com muitos sucessos recentes, a taxa de falha
+        // da réplica demora a cruzar o limite do health check passivo; a retentativa cobre essa janela.
+        await using var destinos = await IniciarDestinosAsync();
+        await using var gateway = new GatewayFactory(destinos);
+        using var cliente = gateway.ClienteDo(Guid.NewGuid(), "pro", "operador");
+        for (var i = 0; i < 40; i++)
+        {
+            using var aquecimento = await cliente.GetAsync("/api/v1/consolidado/2026-09-22", Ct);
+        }
+
+        await destinos.Consolidado1.PararAsync();
+
+        for (var i = 0; i < 20; i++)
+        {
+            using var resposta = await cliente.GetAsync("/api/v1/consolidado/2026-09-22", Ct);
+            resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+    }
+
+    [Fact]
+    public async Task Failover_TodasAsReplicasForaDoAr_Retorna502()
+    {
+        await using var destinos = await IniciarDestinosAsync();
+        await using var gateway = new GatewayFactory(destinos);
+        using var cliente = gateway.ClienteDo(Guid.NewGuid(), "pro", "operador");
+        await destinos.Consolidado1.PararAsync();
+        await destinos.Consolidado2.PararAsync();
+
+        using var resposta = await cliente.GetAsync("/api/v1/consolidado/2026-09-22", Ct);
+
+        resposta.StatusCode.ShouldBeOneOf(HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable);
     }
 
     private static async Task<Destinos> IniciarDestinosAsync()
