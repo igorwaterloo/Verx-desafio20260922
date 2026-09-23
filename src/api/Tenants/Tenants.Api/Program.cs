@@ -1,4 +1,5 @@
 using FluxoCaixa.Infrastructure.Common.Persistence;
+using FluxoCaixa.Infrastructure.Common.Telemetria;
 using FluxoCaixa.Infrastructure.Common.Web;
 using Tenants.Application;
 using Tenants.Infrastructure;
@@ -6,6 +7,8 @@ using Tenants.Infrastructure.Persistence;
 
 // Tenants.Api (contexto Plataforma — ADR-0017): onboarding, planos e usuários do tenant.
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddObservabilidade("tenants-api");
 
 builder.Services.AddWebApiDefaults(builder.Configuration);
 builder.Services.AddTenantsApplication();

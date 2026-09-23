@@ -1,7 +1,11 @@
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using FluxoCaixa.Gateway;
 using FluxoCaixa.Gateway.Tests.Infraestrutura;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Shouldly;
 
 namespace FluxoCaixa.Gateway.Tests;
@@ -35,6 +39,32 @@ public sealed class LimitesEBalanceamentoTests
         respostasPro.ShouldAllBe(r => r.StatusCode == HttpStatusCode.OK, "O tenant Pro não pode ser afetado pelo excesso do tenant Free.");
 
         foreach (var resposta in respostasFree.Concat(respostasPro))
+        {
+            resposta.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task RateLimit_RejeicoesSaoMedidasPorPlanoSemOTenant()
+    {
+        await using var destinos = await IniciarDestinosAsync();
+        await using var gateway = new GatewayFactory(destinos, new Dictionary<string, string>
+        {
+            ["LimitesDeRequisicao:RequisicoesPorSegundo:free"] = "2",
+        });
+        using var free = gateway.ClienteDo(Guid.NewGuid(), "free", "operador");
+        using var rejeicoes = new MetricCollector<long>(
+            gateway.Services.GetRequiredService<IMeterFactory>(), GatewayMetricas.NomeDoMedidor, "gateway.limite_excedido");
+
+        var respostas = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => free.GetAsync("/api/v1/consolidado/2026-09-22", Ct)));
+        var rejeitadas = respostas.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests);
+
+        var medicoes = rejeicoes.GetMeasurementSnapshot();
+        medicoes.Sum(m => m.Value).ShouldBe(rejeitadas);
+        medicoes.ShouldAllBe(m => (string)m.Tags["plano"]! == "free" && (string)m.Tags["limite"]! == "tenant");
+        medicoes.ShouldAllBe(m => !m.Tags.ContainsKey("tenant.id"));
+
+        foreach (var resposta in respostas)
         {
             resposta.Dispose();
         }

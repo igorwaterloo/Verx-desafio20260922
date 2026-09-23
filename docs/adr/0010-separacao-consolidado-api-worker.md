@@ -72,7 +72,7 @@ Ambos referenciam os mesmos projetos `Consolidado.Domain`, `Consolidado.Applicat
     - `UPDATE ... SET Total = Total + @valor` atômico: removeria o conflito, mas tiraria a regra de aplicação do agregado de domínio.
   - **Limite conhecido:** o particionador vale **dentro de uma instância** do Worker. Com várias instâncias, a mesma linha pode ser disputada entre processos (o retry continua garantindo a correção). Para escalar horizontalmente sem conflitos: *consistent hash exchange* no RabbitMQ (uma fila por partição) ou Azure Service Bus com sessões.
   - **Evidências:**
-    - teste de integração `RajadaNoMesmoDia_EhAplicadaInteiraEmPoucosSegundos` (300 eventos na mesma linha em < 8 s);
+    - teste de integração `RajadaNoMesmoDia_EhAplicadaInteiraSemRetentativas` (300 eventos na mesma linha, **zero retentativas** medidas pela métrica `consolidado.retentativas`; sem o particionador, o teste falha);
     - resultados do k6 em [testes.md](../testes.md#resultados-dos-testes-de-carga-fase-8).
 
 ## Referências

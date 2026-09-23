@@ -1,9 +1,13 @@
 using Consolidado.Application;
+using Consolidado.Application.Telemetria;
 using Consolidado.Infrastructure;
+using FluxoCaixa.Infrastructure.Common.Telemetria;
 using FluxoCaixa.Infrastructure.Common.Web;
 
 // Consolidado.Api (ADR-0010): somente leitura, com cache-aside no Redis. Executa com 2+ réplicas.
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddObservabilidade("consolidado-api", ConsolidadoMetricas.NomeDoMedidor);
 
 builder.Services.AddWebApiDefaults(builder.Configuration);
 builder.Services.AddConsolidadoApplication();

@@ -1,4 +1,5 @@
 using FluxoCaixa.Gateway;
+using FluxoCaixa.Infrastructure.Common.Telemetria;
 using FluxoCaixa.Infrastructure.Common.Web;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Yarp.ReverseProxy.Health;
@@ -7,6 +8,8 @@ using Yarp.ReverseProxy.Health;
 // profundidade — os serviços validam de novo), aplica rate limiting por tenant/plano, CORS e headers
 // de segurança, e balanceia as réplicas do Consolidado com health checks ativo e passivo.
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddObservabilidade("gateway", GatewayMetricas.NomeDoMedidor);
 
 var tamanhoMaximoDoCorpo = builder.Configuration.GetValue("Gateway:TamanhoMaximoDoCorpoBytes", 1_048_576L);
 builder.WebHost.ConfigureKestrel(kestrel =>

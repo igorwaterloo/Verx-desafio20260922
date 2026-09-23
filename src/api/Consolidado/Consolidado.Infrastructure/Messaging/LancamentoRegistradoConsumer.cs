@@ -1,4 +1,5 @@
 using Consolidado.Application.Saldos.Aplicar;
+using Consolidado.Application.Telemetria;
 using Consolidado.Domain.Saldos;
 using FluxoCaixa.Contracts;
 using FluxoCaixa.SharedKernel.Cqrs;
@@ -11,12 +12,16 @@ namespace Consolidado.Infrastructure.Messaging;
 /// O tenant já foi definido pelo TenantConsumeFilter a partir do evento. Falhas sobem para o
 /// retry exponencial e, esgotadas as tentativas, a mensagem vai para a fila de erro (DLQ).
 /// </summary>
-public sealed class LancamentoRegistradoConsumer(IDispatcher dispatcher) : IConsumer<LancamentoRegistrado>
+public sealed class LancamentoRegistradoConsumer(IDispatcher dispatcher, ConsolidadoMetricas metricas) : IConsumer<LancamentoRegistrado>
 {
     public async Task Consume(ConsumeContext<LancamentoRegistrado> context)
     {
         ArgumentNullException.ThrowIfNull(context);
         var evento = context.Message;
+        if (context.GetRetryAttempt() > 0)
+        {
+            metricas.Retentativa();
+        }
 
         var tipo = evento.Tipo == TipoLancamento.Credito ? TipoMovimento.Credito : TipoMovimento.Debito;
         var resultado = await dispatcher.SendAsync(

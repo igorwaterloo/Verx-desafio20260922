@@ -17,7 +17,7 @@ public sealed class RegistrarLancamentoHandlerTests
 
     private RegistrarLancamentoHandler CriarHandler() => new(
         _cenario.Lancamentos, _cenario.Planos, _cenario.Idempotencia, _cenario.Publicador,
-        _cenario.UnitOfWork, _cenario.Tenancy, _cenario.Tempo);
+        _cenario.UnitOfWork, _cenario.Tenancy, _cenario.Tempo, _cenario.Metricas);
 
     private static RegistrarLancamentoCommand Comando(DateOnly? data = null, string? chave = null) =>
         new(TipoLancamento.Credito, 150.75m, data ?? Cenario.Hoje, "Venda no balcão", chave);

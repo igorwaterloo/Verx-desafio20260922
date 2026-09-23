@@ -1,0 +1,142 @@
+# Integração contínua (ADR-0012): backend, frontend e imagens a cada push e pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: Directory.Packages.props
+
+      - name: Restaurar
+        run: |
+          dotnet restore FluxoCaixa.slnx
+          dotnet tool restore
+
+      # TreatWarningsAsErrors: analisadores e estilo (.editorconfig) quebram o build.
+      - name: Compilar
+        run: dotnet build FluxoCaixa.slnx -c Release --no-restore
+
+      # Unitários, arquitetura, contrato e integração (Testcontainers usa o Docker do runner).
+      - name: Testar com cobertura
+        run: >
+          dotnet test --solution FluxoCaixa.slnx -c Release --no-build
+          --results-directory resultados
+          --coverage --coverage-output-format cobertura
+
+      - name: Relatório de cobertura
+        if: always()
+        run: |
+          dotnet reportgenerator -reports:"resultados/**/*.cobertura.xml" -targetdir:cobertura \
+            -reporttypes:"Html;MarkdownSummaryGithub" -assemblyfilters:"-*Tests*" -classfilters:"-Microsoft.AspNetCore.OpenApi.Generated*;-System.Runtime.CompilerServices*"
+          cat cobertura/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cobertura-backend
+          path: cobertura/
+          retention-days: 14
+
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/app/fluxo-caixa-web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/app/fluxo-caixa-web/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+      - name: Testar (Vitest)
+        run: npx ng test --watch=false
+      - name: Build de produção
+        run: npx ng build --configuration production
+
+  imagens:
+    name: Imagem ${{ matrix.nome }}
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: gateway
+            contexto: .
+            dockerfile: src/api/Dockerfile
+            args: |
+              PROJETO=src/api/Gateway/FluxoCaixa.Gateway/FluxoCaixa.Gateway.csproj
+              ASSEMBLY=FluxoCaixa.Gateway
+          - nome: lancamentos-api
+            contexto: .
+            dockerfile: src/api/Dockerfile
+            args: |
+              PROJETO=src/api/Lancamentos/Lancamentos.Api/Lancamentos.Api.csproj
+              ASSEMBLY=Lancamentos.Api
+          - nome: tenants-api
+            contexto: .
+            dockerfile: src/api/Dockerfile
+            args: |
+              PROJETO=src/api/Tenants/Tenants.Api/Tenants.Api.csproj
+              ASSEMBLY=Tenants.Api
+          - nome: consolidado-api
+            contexto: .
+            dockerfile: src/api/Dockerfile
+            args: |
+              PROJETO=src/api/Consolidado/Consolidado.Api/Consolidado.Api.csproj
+              ASSEMBLY=Consolidado.Api
+          - nome: consolidado-worker
+            contexto: .
+            dockerfile: src/api/Dockerfile
+            args: |
+              PROJETO=src/api/Consolidado/Consolidado.Worker/Consolidado.Worker.csproj
+              ASSEMBLY=Consolidado.Worker
+          - nome: web
+            contexto: src/app/fluxo-caixa-web
+            dockerfile: src/app/fluxo-caixa-web/Dockerfile
+            args: ''
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # Somente build (sem push): valida os Dockerfiles; publicar em registry é passo de CD.
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.contexto }}
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.args }}
+          push: false
+          tags: fluxo-caixa/${{ matrix.nome }}:ci
+          cache-from: type=gha,scope=${{ matrix.nome }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.nome }}

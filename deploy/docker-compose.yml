@@ -4,6 +4,12 @@
 
 name: fluxo-caixa
 
+# Telemetria (ADR-0011): traces, métricas e logs via OTLP para o Aspire Dashboard.
+x-otel: &otel
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  OTEL_METRIC_EXPORT_INTERVAL: "5000"
+
 x-restart: &restart
   restart: unless-stopped
 
@@ -97,7 +103,6 @@ services:
   # Serviços da aplicação
   # ---------------------------------------------------------------------------
 
-  # Entrada única da aplicação (ADR-0009): a SPA e os clientes externos falam só com o gateway.
   # SPA Angular (nginx). URLs públicas: o navegador fala direto com o gateway e o Keycloak.
   web:
     <<: *restart
@@ -114,6 +119,7 @@ services:
       gateway:
         condition: service_healthy
 
+  # Entrada única da aplicação (ADR-0009): a SPA e os clientes externos falam só com o gateway.
   gateway:
     <<: *restart
     image: fluxo-caixa/gateway:dev
@@ -124,6 +130,7 @@ services:
         PROJETO: src/api/Gateway/FluxoCaixa.Gateway/FluxoCaixa.Gateway.csproj
         ASSEMBLY: FluxoCaixa.Gateway
     environment:
+      <<: *otel
       # "Docker" (e não Development): os destinos vêm do appsettings.json, com os nomes dos serviços.
       ASPNETCORE_ENVIRONMENT: Docker
       Autenticacao__Authority: http://keycloak:8080/realms/fluxo-caixa
@@ -159,6 +166,7 @@ services:
         PROJETO: src/api/Lancamentos/Lancamentos.Api/Lancamentos.Api.csproj
         ASSEMBLY: Lancamentos.Api
     environment:
+      <<: *otel
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Lancamentos: "Server=sqlserver,1433;Database=LancamentosDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
       RabbitMq__Host: rabbitmq
@@ -195,6 +203,7 @@ services:
         PROJETO: src/api/Tenants/Tenants.Api/Tenants.Api.csproj
         ASSEMBLY: Tenants.Api
     environment:
+      <<: *otel
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Tenants: "Server=sqlserver,1433;Database=TenantsDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
       RabbitMq__Host: rabbitmq
@@ -230,6 +239,7 @@ services:
         PROJETO: src/api/Consolidado/Consolidado.Worker/Consolidado.Worker.csproj
         ASSEMBLY: Consolidado.Worker
     environment:
+      <<: *otel
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Consolidado: "Server=sqlserver,1433;Database=ConsolidadoDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
       RabbitMq__Host: rabbitmq
@@ -258,6 +268,7 @@ services:
         PROJETO: src/api/Consolidado/Consolidado.Api/Consolidado.Api.csproj
         ASSEMBLY: Consolidado.Api
     environment:
+      <<: *otel
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Consolidado: "Server=sqlserver,1433;Database=ConsolidadoDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
       Redis__Endereco: redis:6379

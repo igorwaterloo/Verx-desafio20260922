@@ -1,4 +1,5 @@
 using Consolidado.Application.Abstractions;
+using Consolidado.Application.Telemetria;
 using Consolidado.Domain.Saldos;
 using FluxoCaixa.SharedKernel;
 using FluxoCaixa.SharedKernel.Cqrs;
@@ -26,7 +27,8 @@ public sealed class AplicarLancamentoNoSaldoHandler(
     IUnitOfWork unitOfWork,
     ICacheConsolidado cache,
     ITenantContext tenant,
-    TimeProvider tempo) : ICommandHandler<AplicarLancamentoNoSaldoCommand, Unit>
+    TimeProvider tempo,
+    ConsolidadoMetricas metricas) : ICommandHandler<AplicarLancamentoNoSaldoCommand, Unit>
 {
     public async Task<Result<Unit>> HandleAsync(AplicarLancamentoNoSaldoCommand command, CancellationToken cancellationToken)
     {
@@ -34,6 +36,7 @@ public sealed class AplicarLancamentoNoSaldoHandler(
 
         if (await inbox.JaProcessadaAsync(command.EventId, cancellationToken))
         {
+            metricas.EventoDuplicado();
             return Unit.Value;
         }
 
@@ -45,9 +48,11 @@ public sealed class AplicarLancamentoNoSaldoHandler(
         }
 
         saldo.Aplicar(command.Tipo, command.Valor, command.OcorridoEm);
-        inbox.Registrar(command.EventId, tempo.GetUtcNow());
+        var agora = tempo.GetUtcNow();
+        inbox.Registrar(command.EventId, agora);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        metricas.EventoAplicado(agora - command.OcorridoEm);
         await cache.RemoverAsync(ChavesDeCache.Dia(tenant.TenantId, command.DataCompetencia), cancellationToken);
 
         return Unit.Value;

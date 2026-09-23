@@ -1,5 +1,6 @@
 using FluxoCaixa.SharedKernel.Tenancy;
 using Lancamentos.Application.Abstractions;
+using Lancamentos.Application.Telemetria;
 using Lancamentos.Domain.Lancamentos;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -33,6 +34,8 @@ internal sealed class Cenario
     public TenantContext Tenancy { get; } = new();
 
     public FakeTimeProvider Tempo { get; } = new(Agora);
+
+    public LancamentosMetricas Metricas { get; } = new(new MedidoresDeTeste());
 
     public static Lancamento LancamentoExistente(TipoLancamento tipo = TipoLancamento.Credito) =>
         Lancamento.Criar(Tenant, tipo, 100m, Hoje, "Venda existente", "usuario-0", Agora.AddHours(-1)).Value;

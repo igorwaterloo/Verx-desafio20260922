@@ -1,4 +1,5 @@
 using FluxoCaixa.Application.Common.Cqrs;
+using Lancamentos.Application.Telemetria;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -10,6 +11,8 @@ public static class DependencyInjection
     {
         services.AddCqrs(typeof(DependencyInjection).Assembly);
         services.TryAddSingleton(TimeProvider.System);
+        // IMeterFactory vem do host (registrado pelo ASP.NET Core).
+        services.TryAddSingleton<LancamentosMetricas>();
         return services;
     }
 }

@@ -1,8 +1,10 @@
+using FluxoCaixa.Infrastructure.Common.Telemetria;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FluxoCaixa.Infrastructure.Common.Web;
 
@@ -13,7 +15,7 @@ namespace FluxoCaixa.Infrastructure.Common.Web;
 /// </summary>
 public sealed class TenantResolutionMiddleware(RequestDelegate next)
 {
-    public async Task InvokeAsync(HttpContext httpContext, TenantContext tenantContext)
+    public async Task InvokeAsync(HttpContext httpContext, TenantContext tenantContext, ILogger<TenantResolutionMiddleware> logger)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(tenantContext);
@@ -34,6 +36,8 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
             return;
         }
 
+        // Tenant no span da requisição e em todos os logs dela (ADR-0011).
+        using var escopo = tenantContext.HasTenant ? Observabilidade.MarcarTenant(logger, tenantContext.TenantId) : null;
         await next(httpContext);
     }
 }

@@ -21,12 +21,13 @@
 | [Requisitos não funcionais](requisitos-nao-funcionais.md) | SLOs, métricas, capacidade, RPO/RTO, requisitos de SaaS (isolamento, noisy neighbor, LGPD) |
 | [ADRs](adr/README.md) | Registro de decisões arquiteturais |
 | [Segurança](seguranca.md) | Superfície exposta, ameaças (STRIDE), controles, evidências e riscos residuais |
+| [Observabilidade](observabilidade.md) | OpenTelemetry, métricas de negócio, como seguir um lançamento no Aspire e alertas propostos |
 
 ## Qualidade e evolução
 
 | Documento | Conteúdo |
 |---|---|
-| [Estratégia de testes](testes.md) | Pirâmide de testes, TDD e resultados de carga |
+| [Estratégia de testes](testes.md) | Pirâmide de testes, TDD, CI e resultados de carga |
 | [Evolução futura](evolucao-futura.md) | Melhorias planejadas e próximos passos |
 
 ## Como visualizar os diagramas

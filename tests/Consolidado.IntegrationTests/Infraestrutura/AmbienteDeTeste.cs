@@ -33,6 +33,9 @@ public sealed class AmbienteDeTeste : IAsyncLifetime
 
     public ConsolidadoApiFactory Api { get; private set; } = null!;
 
+    /// <summary>Serviços do worker (ex.: IMeterFactory para verificar métricas).</summary>
+    public IServiceProvider ServicosDoWorker => _worker?.Services ?? throw new InvalidOperationException("Ambiente não iniciado.");
+
     public IPublishEndpoint Publicador => _publicador ?? throw new InvalidOperationException("Ambiente não iniciado.");
 
     public IDatabase Redis => _redisDoTeste?.GetDatabase() ?? throw new InvalidOperationException("Ambiente não iniciado.");

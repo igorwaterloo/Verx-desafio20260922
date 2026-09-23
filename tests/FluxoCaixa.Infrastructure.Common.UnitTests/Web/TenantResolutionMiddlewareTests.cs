@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using FluxoCaixa.Infrastructure.Common.Web;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 
 namespace FluxoCaixa.Infrastructure.Common.UnitTests.Web;
@@ -24,7 +26,7 @@ public sealed class TenantResolutionMiddlewareTests
         var http = new DefaultHttpContext();
         var tenant = new TenantContext();
 
-        await CriarMiddleware().InvokeAsync(http, tenant);
+        await CriarMiddleware().InvokeAsync(http, tenant, NullLogger<TenantResolutionMiddleware>.Instance);
 
         _proximoChamado.ShouldBeTrue();
         tenant.HasTenant.ShouldBeFalse();
@@ -36,11 +38,22 @@ public sealed class TenantResolutionMiddlewareTests
         var http = new DefaultHttpContext { User = Usuario(new Claim(TenantClaims.TenantId, TenantA.ToString())) };
         var tenant = new TenantContext();
 
-        await CriarMiddleware().InvokeAsync(http, tenant);
+        await CriarMiddleware().InvokeAsync(http, tenant, NullLogger<TenantResolutionMiddleware>.Instance);
 
         _proximoChamado.ShouldBeTrue();
         tenant.TenantId.ShouldBe(TenantA);
         tenant.UsuarioId.ShouldBe("usuario-1");
+    }
+
+    [Fact]
+    public async Task UsuarioAutenticadoComTenant_MarcaOSpanDaRequisicaoComOTenant()
+    {
+        using var span = new Activity("GET /api/v1/lancamentos").Start();
+        var http = new DefaultHttpContext { User = Usuario(new Claim(TenantClaims.TenantId, TenantA.ToString())) };
+
+        await CriarMiddleware().InvokeAsync(http, new TenantContext(), NullLogger<TenantResolutionMiddleware>.Instance);
+
+        span.GetTagItem("tenant.id").ShouldBe(TenantA.ToString());
     }
 
     [Fact]
@@ -50,7 +63,7 @@ public sealed class TenantResolutionMiddlewareTests
         http.Response.Body = new MemoryStream();
         var tenant = new TenantContext();
 
-        await CriarMiddleware().InvokeAsync(http, tenant);
+        await CriarMiddleware().InvokeAsync(http, tenant, NullLogger<TenantResolutionMiddleware>.Instance);
 
         _proximoChamado.ShouldBeFalse();
         http.Response.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);

@@ -1,6 +1,7 @@
 using Consolidado.Application.Abstractions;
 using Consolidado.Application.Saldos;
 using Consolidado.Application.Saldos.Aplicar;
+using Consolidado.Application.Telemetria;
 using Consolidado.Domain.Saldos;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Microsoft.Extensions.Time.Testing;
@@ -27,7 +28,7 @@ public sealed class AplicarLancamentoNoSaldoHandlerTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private AplicarLancamentoNoSaldoHandler CriarHandler() =>
-        new(_saldos, _inbox, _unitOfWork, _cache, _tenant, new FakeTimeProvider(Agora));
+        new(_saldos, _inbox, _unitOfWork, _cache, _tenant, new FakeTimeProvider(Agora), new ConsolidadoMetricas(new MedidoresDeTeste()));
 
     private static AplicarLancamentoNoSaldoCommand Evento(TipoMovimento tipo = TipoMovimento.Credito, decimal valor = 100m) =>
         new(Guid.NewGuid(), tipo, valor, Dia, Agora.AddSeconds(-2));

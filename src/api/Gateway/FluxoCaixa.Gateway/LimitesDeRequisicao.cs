@@ -48,6 +48,7 @@ public static class LimitesDeRequisicao
     {
         var opcoes = configuration.GetSection("LimitesDeRequisicao").Get<OpcoesDeLimite>() ?? new OpcoesDeLimite();
         services.AddSingleton(opcoes);
+        services.AddSingleton<GatewayMetricas>();
 
         services.AddRateLimiter(limites =>
         {
@@ -94,7 +95,13 @@ public static class LimitesDeRequisicao
 
     private static async ValueTask ResponderLimiteExcedidoAsync(OnRejectedContext contexto, CancellationToken cancellationToken)
     {
-        var resposta = contexto.HttpContext.Response;
+        var http = contexto.HttpContext;
+        var plano = http.User.FindFirst(TenantClaims.Plano)?.Value;
+        var comTenant = http.User.FindFirst(TenantClaims.TenantId) is not null;
+        http.RequestServices.GetRequiredService<GatewayMetricas>()
+            .LimiteExcedido(comTenant ? "tenant" : "ip", comTenant ? plano ?? "desconhecido" : "anonimo");
+
+        var resposta = http.Response;
         if (contexto.Lease.TryGetMetadata(MetadataName.RetryAfter, out var aguardar))
         {
             resposta.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(aguardar.TotalSeconds)).ToString(CultureInfo.InvariantCulture);

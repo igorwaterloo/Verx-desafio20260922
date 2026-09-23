@@ -7,17 +7,34 @@ namespace Architecture.Tests;
 /// </summary>
 public sealed class BuildingBlocksTests
 {
+    // Bibliotecas proibidas nos building blocks mais internos. Não se usa o prefixo "Microsoft" inteiro:
+    // a cobertura de código (Microsoft.CodeCoverage) instrumenta os assemblies e injeta referências
+    // próprias, que não são dependências do código.
+    private static readonly string[] BibliotecasDeInfraestrutura =
+    [
+        "Microsoft.Extensions",
+        "Microsoft.AspNetCore",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.Data",
+        "Microsoft.IdentityModel",
+        "MassTransit",
+        "StackExchange.Redis",
+        "OpenTelemetry",
+    ];
+
     [Fact]
     public void SharedKernel_NaoPossuiDependenciasExternas()
     {
         Types.InAssembly(Assemblies.SharedKernel)
             .ShouldNot()
             .HaveDependencyOnAny(
-                "Microsoft",
+            [
+                .. BibliotecasDeInfraestrutura,
                 "FluentValidation",
                 "FluxoCaixa.Contracts",
                 "FluxoCaixa.Application.Common",
-                "FluxoCaixa.Infrastructure.Common")
+                "FluxoCaixa.Infrastructure.Common",
+            ])
             .GetResult()
             .DeveSerValido();
     }
@@ -28,10 +45,12 @@ public sealed class BuildingBlocksTests
         Types.InAssembly(Assemblies.Contracts)
             .ShouldNot()
             .HaveDependencyOnAny(
-                "Microsoft",
+            [
+                .. BibliotecasDeInfraestrutura,
                 "FluxoCaixa.SharedKernel",
                 "FluxoCaixa.Application.Common",
-                "FluxoCaixa.Infrastructure.Common")
+                "FluxoCaixa.Infrastructure.Common",
+            ])
             .GetResult()
             .DeveSerValido();
     }

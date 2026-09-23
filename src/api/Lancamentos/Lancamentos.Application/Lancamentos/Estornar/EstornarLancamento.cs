@@ -2,6 +2,7 @@ using FluxoCaixa.SharedKernel;
 using FluxoCaixa.SharedKernel.Cqrs;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Lancamentos.Application.Abstractions;
+using Lancamentos.Application.Telemetria;
 using Lancamentos.Domain.Lancamentos;
 
 namespace Lancamentos.Application.Lancamentos.Estornar;
@@ -18,7 +19,8 @@ public sealed class EstornarLancamentoHandler(
     IIntegrationEventPublisher publicador,
     IUnitOfWork unitOfWork,
     ITenantContext tenant,
-    TimeProvider tempo) : ICommandHandler<EstornarLancamentoCommand, LancamentoDto>
+    TimeProvider tempo,
+    LancamentosMetricas metricas) : ICommandHandler<EstornarLancamentoCommand, LancamentoDto>
 {
     public async Task<Result<LancamentoDto>> HandleAsync(EstornarLancamentoCommand command, CancellationToken cancellationToken)
     {
@@ -54,6 +56,7 @@ public sealed class EstornarLancamentoHandler(
             return LancamentoErros.JaEstornado;
         }
 
+        metricas.Registrado(estorno.Value);
         return LancamentoDto.De(estorno.Value);
     }
 }

@@ -1,0 +1,38 @@
+# Atualização de dependências (ADR-0013): PRs semanais agrupados por ecossistema.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      nuget:
+        patterns: ['*']
+    ignore:
+      # MassTransit 9 é comercial (ADR-0013): permanecer na linha 8.x.
+      - dependency-name: MassTransit*
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directories:
+      - /src/app/fluxo-caixa-web
+      - /src/app/fluxo-caixa-web/e2e
+    schedule:
+      interval: weekly
+    groups:
+      angular:
+        patterns: ['@angular/*', '@angular-devkit/*']
+      npm:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directories:
+      - /src/api
+      - /src/app/fluxo-caixa-web
+    schedule:
+      interval: weekly
