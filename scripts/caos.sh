@@ -9,7 +9,14 @@
 # Uso: ./scripts/caos.sh consolidado | broker | replica
 set -eu
 
-RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+# No Git Bash (Windows) usa o caminho do Windows e desliga a conversão automática de caminhos:
+# caminhos como /tmp/... ou /c/... e opções como "-w /src" não chegam ao Docker como esperado.
+if pwd -W >/dev/null 2>&1; then
+  export MSYS_NO_PATHCONV=1
+  RAIZ="$(cd "$(dirname "$0")/.." && pwd -W)"
+else
+  RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+fi
 MODO="${1:?informe o modo: consolidado | broker | replica}"
 K6="fluxo-caixa-k6-caos"
 

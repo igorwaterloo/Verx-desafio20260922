@@ -7,7 +7,14 @@
 #   ./scripts/test-e2e.sh
 set -eu
 
-RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+# No Git Bash (Windows) usa o caminho do Windows e desliga a conversão automática de caminhos:
+# caminhos como /tmp/... ou /c/... e opções como "-w /src" não chegam ao Docker como esperado.
+if pwd -W >/dev/null 2>&1; then
+  export MSYS_NO_PATHCONV=1
+  RAIZ="$(cd "$(dirname "$0")/.." && pwd -W)"
+else
+  RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+fi
 
 exec docker run --rm --network host --ipc host \
   -v "$RAIZ/src/app/fluxo-caixa-web/e2e:/e2e" \

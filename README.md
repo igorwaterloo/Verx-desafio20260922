@@ -149,6 +149,12 @@ Separar as camadas em projetos faz o **compilador** impedir dependências proibi
 - [.NET SDK 10.0.400+](https://dotnet.microsoft.com/download) — opcional: build e testes também rodam em container (ver [Testes](#testes))
 - [Node.js LTS](https://nodejs.org/) (24+) — opcional: só para desenvolver o frontend fora do container
 
+**Recursos da máquina:**
+- **Memória:** a stack completa usa cerca de **2,3 GB** de RAM no Docker; reserve 4 GB ou mais para a VM do Docker Desktop. Numa máquina de 16 GB, pare a stack (`docker compose stop`) antes de rodar a suíte completa de testes .NET, que sobe os próprios containers (SQL Server, RabbitMQ, Redis, Keycloak).
+- **Portas livres no host:** 1433 (SQL Server), 4200 (SPA), 4317 e 18888 (Aspire), 5101, 5201, 5202 e 5301 (APIs, para depuração), 5672 e 15672 (RabbitMQ), 6379 (Redis), 8080 (gateway), 8081 (Keycloak).
+- **Mac com Apple Silicon:** a imagem do SQL Server é só `amd64`. Ative a emulação (*Use Rosetta for x86_64/amd64 emulation*) nas configurações do Docker Desktop. Não foi testado neste ambiente.
+- **Windows:** use os scripts `.ps1` no PowerShell. Os `.sh` também funcionam no Git Bash.
+
 ### 1. Subir a infraestrutura
 
 ```bash
