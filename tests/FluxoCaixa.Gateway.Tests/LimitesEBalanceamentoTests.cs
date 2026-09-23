@@ -127,6 +127,31 @@ public sealed class LimitesEBalanceamentoTests
     }
 
     [Fact]
+    public async Task Failover_ReplicaQueSumiuDaRede_LeiturasNaoFicamPenduradas()
+    {
+        // Cenário do teste de caos (Fase 8): um container parado some da rede e a conexão ao IP dele não é
+        // recusada — fica pendurada. Sem timeout de conexão, cada leitura esperava o ActivityTimeout (10 s)
+        // antes da retentativa. Com o timeout de conexão curto, a leitura vai para a outra réplica em ~1 s.
+        await using var destinos = await IniciarDestinosAsync();
+        await using var gateway = new GatewayFactory(destinos, new Dictionary<string, string>
+        {
+            // Endereço não roteável: os pacotes são descartados, como os de um container que saiu da rede.
+            ["ReverseProxy:Clusters:consolidado:Destinations:consolidado-api-2:Address"] = "http://10.255.255.1:8080",
+        });
+        using var cliente = gateway.ClienteDo(Guid.NewGuid(), "pro", "operador");
+
+        for (var i = 0; i < 4; i++)
+        {
+            var cronometro = System.Diagnostics.Stopwatch.StartNew();
+            using var resposta = await cliente.GetAsync("/api/v1/consolidado/2026-09-22", Ct);
+            cronometro.Stop();
+
+            resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
+            cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(3));
+        }
+    }
+
+    [Fact]
     public async Task Failover_TodasAsReplicasForaDoAr_Retorna502()
     {
         await using var destinos = await IniciarDestinosAsync();
