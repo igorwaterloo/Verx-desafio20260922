@@ -59,6 +59,21 @@ Ambos referenciam os mesmos projetos `Consolidado.Domain`, `Consolidado.Applicat
   - O Worker é o **escritor** da projeção e por isso é quem aplica as migrations do `ConsolidadoDb`; as réplicas da Api só sobem depois de o Worker estar saudável.
   - A infraestrutura é composta em blocos (`AddConsolidadoPersistencia`, `AddConsolidadoCache`, `AddConsolidadoMensageria`): a Api não registra MassTransit; o Worker não registra controllers.
   - Medido localmente: do POST no Lançamentos ao saldo visível no Consolidado, **250–350 ms** em regime (SLO-07 < 5 s). Com o Consolidado inteiro parado, o Lançamentos seguiu respondendo 201 e o saldo convergiu ao religar.
+- **2026-09-23 — Testes de carga (Fase 8): consumo particionado por linha de saldo.**
+  - **Problema encontrado:**
+    - Com 50 lançamentos/s de um mesmo comerciante (caso real: todos caem no saldo de hoje), vários consumidores concorrentes atualizavam a **mesma linha** de `SaldoDiario`.
+    - A concorrência otimista (`rowversion`) gerava centenas de conflitos, cada um levado ao retry exponencial (a partir de 1 s).
+    - O saldo levou **14 s** para convergir após a carga, acima do SLO-07 (< 5 s), e havia risco de mensagens esgotarem as tentativas e irem para a DLQ.
+  - **Decisão:** o consumidor usa o **particionador do MassTransit** com a chave `tenant + data de competência` (`LancamentoRegistradoConsumerDefinition`, 16 partições por instância):
+    - eventos da mesma linha são aplicados em série, sem conflitos;
+    - linhas diferentes (outros tenants ou dias) seguem em paralelo.
+  - **Alternativas descartadas:**
+    - Consumo serial (`ConcurrentMessageLimit = 1`): limitaria a vazão de todos os tenants à de uma linha.
+    - `UPDATE ... SET Total = Total + @valor` atômico: removeria o conflito, mas tiraria a regra de aplicação do agregado de domínio.
+  - **Limite conhecido:** o particionador vale **dentro de uma instância** do Worker. Com várias instâncias, a mesma linha pode ser disputada entre processos (o retry continua garantindo a correção). Para escalar horizontalmente sem conflitos: *consistent hash exchange* no RabbitMQ (uma fila por partição) ou Azure Service Bus com sessões.
+  - **Evidências:**
+    - teste de integração `RajadaNoMesmoDia_EhAplicadaInteiraEmPoucosSegundos` (300 eventos na mesma linha em < 8 s);
+    - resultados do k6 em [testes.md](../testes.md#resultados-dos-testes-de-carga-fase-8).
 
 ## Referências
 - Microsoft — *CQRS pattern*; *Competing Consumers pattern*

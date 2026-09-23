@@ -10,6 +10,8 @@
 | **Billing** | Cobrança recorrente dos planos (gateway de pagamento), faturas, período de teste, upgrade/downgrade com pró-rata. O contexto Plataforma já é o lugar natural. |
 | **Ciclo de vida do tenant** | Suspensão por inadimplência (evento `TenantSuspenso` bloqueando escrita), reativação e encerramento. |
 | **Tenancy híbrida** | Tenants enterprise em banco dedicado, com um catálogo `TenantId → connection string` resolvido pelo `ITenantContext`. |
+| **Worker do Consolidado em várias instâncias** | Hoje o consumo é particionado por tenant + data dentro de uma instância ([ADR-0010](adr/0010-separacao-consolidado-api-worker.md)). Para escalar horizontalmente sem disputar a mesma linha de saldo: *consistent hash exchange* no RabbitMQ (uma fila por partição) ou sessões no Azure Service Bus. |
+| **Carga em homologação** | Rodar os mesmos scripts k6 contra um ambiente dedicado, com o gerador de carga em outra máquina, como verificação de release. |
 | **Row-Level Security** | RLS do SQL Server com `SESSION_CONTEXT('TenantId')` como camada extra de isolamento. |
 | **LGPD** | Exportação e exclusão de dados por tenant, retenção configurável, registro de consentimento. |
 | **Múltiplos estabelecimentos** | Várias lojas/caixas por tenant, com consolidado por estabelecimento e total. |

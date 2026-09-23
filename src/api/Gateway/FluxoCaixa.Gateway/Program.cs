@@ -21,9 +21,15 @@ builder.Services.AddLimitesDeRequisicao(builder.Configuration);
 builder.Services.AddCorsDaSpa(builder.Configuration);
 builder.Services.AddHealthChecks();
 
+// Timeout de conexão curto: uma réplica que saiu da rede (container parado, nó perdido) não recusa a
+// conexão — ela fica pendurada até o ActivityTimeout. Falhando em ~1 s, a leitura é reenviada à outra
+// réplica e o health check passivo retira a réplica do balanceamento (encontrado no teste de caos, Fase 8).
+var tempoLimiteDeConexao = builder.Configuration.GetValue("Gateway:TempoLimiteDeConexao", TimeSpan.FromSeconds(1));
+
 builder.Services
     .AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .ConfigureHttpClient((_, handler) => handler.ConnectTimeout = tempoLimiteDeConexao);
 
 // Health check passivo: a taxa de falhas de transporte (conexão recusada, timeout) numa janela curta
 // retira a réplica do balanceamento; ela volta após o período de reativação ou pelo health check ativo.

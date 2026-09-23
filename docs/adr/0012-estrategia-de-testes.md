@@ -74,6 +74,14 @@ Testes são requisito obrigatório do desafio. Além de cobrir as regras de neg�
 
 - **2026-09-22 — Execução e cobertura:** com xUnit v3 no .NET 10 SDK, os testes rodam sobre o **Microsoft Testing Platform** (MTP), habilitado em `global.json` (`"test": { "runner": "Microsoft.Testing.Platform" }`). A cobertura passa a ser coletada por **`Microsoft.Testing.Extensions.CodeCoverage`** (o `coverlet.collector` é específico do VSTest). Os testes também rodam **dentro do container** `mcr.microsoft.com/dotnet/sdk:10.0` (scripts em `scripts/`), que é o mesmo ambiente do CI e dispensa o SDK na máquina.
 
+- **2026-09-23 — Carga e caos (Fase 8):**
+  - Os scripts k6 ficam em `tests/stress/k6` e rodam no container `grafana/k6` com a rede do host, contra o gateway e com tokens reais. Entrada: `scripts/carga.*` e `scripts/caos.*`.
+  - Cada execução cria os próprios tenants, e a convergência é conferida numa data passada exclusiva da execução: a soma da API de Lançamentos tem que ser igual ao Consolidado.
+  - Os testes encontraram **dois defeitos reais**, corrigidos com testes automatizados antes da correção (TDD):
+    - conflitos na mesma linha de saldo no worker ([ADR-0010](0010-separacao-consolidado-api-worker.md));
+    - conexões penduradas para uma réplica fora da rede no gateway ([ADR-0009](0009-api-gateway-yarp.md)).
+  - Resultados em [testes.md](../testes.md#resultados-dos-testes-de-carga-fase-8).
+
 ## Referências
 - Martin Fowler — *The Practical Test Pyramid*
 - Kent Beck — *Test-Driven Development: By Example*

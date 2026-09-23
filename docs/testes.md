@@ -1,6 +1,6 @@
 # Estratégia de Testes
 
-> Documento inicial. É detalhado nas fases de implementação, e os resultados de carga entram na Fase 8. Decisão: [ADR-0012](adr/0012-estrategia-de-testes.md).
+> Decisão: [ADR-0012](adr/0012-estrategia-de-testes.md). Resultados de carga e caos na [seção final](#resultados-dos-testes-de-carga-fase-8).
 
 ## Pirâmide
 
@@ -121,6 +121,45 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Rajada de 60 requisições simultâneas por tenant | Padaria (Free, 20 req/s): 20×200 e 40×429 · Mercado (Pro, 100 req/s): 60×200 |
 | `consolidado-api-1` parado logo após a rajada | 12 de 12 consultas com 200 (retentativa na réplica 2) |
 
-## Resultados de carga
+## Resultados dos testes de carga (Fase 8)
 
-_Serão registrados na Fase 8._
+Execução em 2026-09-23 com a stack completa do `docker compose` numa única máquina:
+- **Máquina:** Intel Core 7 240H, 10 núcleos / 16 threads, 16 GB de RAM.
+- **Docker Desktop 29.8** (WSL2): 16 vCPUs e 7,6 GB.
+- **k6 2.3.0** no mesmo host.
+
+Tudo passa pelo gateway, com tokens reais do Keycloak. Os números valem como **ordem de grandeza e comparação entre execuções**, não como capacidade de produção: gerador de carga e sistema dividem a mesma CPU.
+
+Como rodar (com a stack no ar):
+
+```powershell
+./scripts/carga.ps1 consolidado-50rps       # também: lancamentos-carga, noisy-neighbor
+./scripts/caos.ps1 consolidado              # também: broker, replica
+```
+
+Cada execução cria os **próprios tenants** pelo onboarding. O login com senha é feito uma vez; os VUs renovam o token pelo refresh token, como a SPA. Os resumos ficam em `tests/stress/k6/resultados/` (fora do Git).
+
+### Resultado final
+
+| Teste | Carga | Resultado | SLO |
+|---|---|---|---|
+| **Consolidado sustentado** (`consolidado-50rps`) | 50 req/s por 5 min, um tenant Pro, 70% consulta do dia e 30% período de 7 ou 30 dias | 15.001 requisições, **0% de erro**, 0 iterações perdidas; p95 **6,8 ms**, p99 **9,4 ms** | RNF-02 (≤ 5% de perda) e meta interna (< 1%) ✅ · SLO-05 (p95 < 200 ms, p99 < 500 ms) ✅ |
+| **Consolidado em pico** | 100 req/s por 1 min, dois tenants Pro | 6.001 requisições, **0% de erro**; p95 **6,1 ms** | SLO-04 ✅ |
+| **Escrita de lançamentos** (`lancamentos-carga`) | Rampa até 50 req/s + 3 min, um tenant, mesma data | 10.075 lançamentos, **0% de erro**; p95 **33 ms**, p99 45 ms; 471 reenvios com a mesma `Idempotency-Key` devolveram o mesmo lançamento; consolidado **igual à soma dos lançamentos 0,57 s** após o fim da carga | SLO-06 (p95 < 300 ms) ✅ · SLO-07 (< 5 s) ✅ · SLO-08 ✅ |
+| **Vizinho barulhento** (`noisy-neighbor`) | Free a 60 req/s (3× o limite) + Pro a 50 req/s, por 2 min | Free: exatamente o limite aceito (~20 req/s), **66% com 429** + `Retry-After`, nenhum outro erro. Pro: **0% de erro**, p95 **7,9 ms**, igual à execução isolada | SLO-10 ✅ |
+| **Caos: Consolidado fora** (`caos consolidado`) | 20 lançamentos/s por 3 min; API (2 réplicas) e worker parados por 60 s | 3.601 lançamentos, **0% de erro**, p95 37 ms; após religar, saldo **idêntico** à soma dos lançamentos | RNF-01 / SLO-02 ✅ |
+| **Caos: broker fora** (`caos broker`) | 20 lançamentos/s por 3 min; RabbitMQ parado por 60 s | 3.600 lançamentos, **0% de erro** (outbox); todos os eventos entregues depois do retorno; saldo idêntico | RNF-01 / SLO-02 ✅ |
+| **Caos: uma réplica fora** (`caos replica`) | 50 req/s por 3 min; `consolidado-api-1` parado por 60 s | **0% de erro**; p95 7,4 ms, p99 344 ms; 0,49% de iterações perdidas | RNF-02 ✅ · meta interna < 1% ✅ |
+
+### Problemas encontrados pelos testes e corrigidos
+
+| Problema | Antes | Correção | Depois |
+|---|---|---|---|
+| Consumidores concorrentes disputando a **mesma linha de saldo** (tenant + dia) com concorrência otimista; os conflitos caíam no retry exponencial | Consolidado convergiu **14 s** após 50 lançamentos/s (SLO-07: < 5 s); centenas de conflitos e risco de DLQ | Consumo **particionado por tenant + data** no worker ([ADR-0010](adr/0010-separacao-consolidado-api-worker.md)); teste de integração de rajada com 300 eventos | **0,57 s**, zero conflitos |
+| Réplica que sai da rede: a conexão fica **pendurada** em vez de ser recusada, e o gateway só tentava a outra réplica após o timeout da requisição (10 s) | p99 **10 s**; **4,6%** das iterações perdidas (no limite dos 5%) | Timeout de conexão de 1 s e health check ativo a cada 2 s, que retira a réplica na primeira falha ([ADR-0009](adr/0009-api-gateway-yarp.md)); teste do gateway com destino não roteável | p99 **344 ms**, **0,49%** perdidas |
+| Muitos logins simultâneos do mesmo usuário no k6 | Keycloak bloqueou os usuários (proteção contra força bruta) | Problema do **teste**, não do sistema: login uma vez no `setup` e renovação por refresh token | — |
+
+### Limites conhecidos
+- O particionamento do worker vale **dentro de uma instância**. Para escalar o worker horizontalmente sem conflitos: *consistent hash exchange* no RabbitMQ ou sessões no Azure Service Bus.
+- Com todas as réplicas do Consolidado fora, as consultas retornam 502/503 (esperado). A SPA mostra o aviso de indisponibilidade, e os lançamentos seguem funcionando.
+- Carga medida numa única máquina. Em produção, repetir os mesmos scripts contra o ambiente de homologação, com o gerador de carga separado.

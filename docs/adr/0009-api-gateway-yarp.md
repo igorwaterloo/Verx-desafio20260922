@@ -69,11 +69,25 @@ A SPA consome dois serviços, e o Consolidado roda com **várias réplicas** (RN
 
 - **2026-09-22 — Implementação (Fase 6):**
   - **Retentativa em outra réplica** implementada como middleware no pipeline do YARP: GET/HEAD com falha de transporte e resposta ainda não iniciada são reenviados a outra réplica disponível; escritas nunca são repetidas pelo gateway. A necessidade apareceu na verificação ponta a ponta: uma réplica que acabou de atender uma rajada e cai mantém a taxa de falhas abaixo do limite do health check passivo por vários segundos, e metade das consultas voltava 502. Com a retentativa, 12 de 12 consultas responderam 200 logo após a queda.
-  - **Health checks:** ativo a cada 5 s (`/health/ready`) e passivo por taxa de falhas de transporte (janela de 10 s, reativação em 15 s).
+  - **Health checks:** ativo a cada 5 s (`/health/ready`) e passivo por taxa de falhas de transporte (janela de 10 s, reativação em 15 s). *Ajustado na Fase 8 (abaixo).*
   - **Rate limiting:** token bucket **por tenant** com a vazão do plano (claim `plano`) e janela fixa **por IP** nas rotas públicas (cadastro: 10/min; catálogo: 120/min). O limite adicional por usuário ficou como evolução: o limite por tenant já atende o RNF-04 ([segurança](../seguranca.md#5-riscos-residuais-e-evolução)).
   - **Autorização por rota:** `POST /api/v1/tenants` e `GET /api/v1/planos` anônimos; demais rotas exigem token válido; os serviços validam o token de novo.
   - **Headers encaminhados:** as APIs honram `X-Forwarded-Host/Proto`, para que `Location` e links usem o endereço público do gateway.
   - **Endurecimento HTTP:** headers de segurança, CORS restrito à SPA, limite de 1 MB no corpo, sem header `Server`.
+
+- **2026-09-23 — Teste de caos (Fase 8): réplica que sai da rede.**
+  - **Problema:** um container parado sai da rede, e a conexão ao IP dele fica pendurada em vez de ser recusada. Cada leitura esperava o `ActivityTimeout` (10 s) antes da retentativa em outra réplica.
+  - **Efeito medido a 50 req/s:**
+    - p99 de 10 s;
+    - ~4,6% das iterações perdidas por falta de VUs (no limite do requisito de 5%).
+  - **Ajustes:**
+    - timeout de conexão de **1 s** (`Gateway:TempoLimiteDeConexao`);
+    - health check ativo a cada **2 s**, com timeout de 1 s e **uma** falha para retirar a réplica (`ConsecutiveFailuresHealthPolicy.Threshold = 1`).
+  - **Resultado (mesmo teste):**
+    - 0% de erro;
+    - p95 de 7,4 ms e p99 de 344 ms;
+    - 0,49% de iterações perdidas.
+  - **Teste:** `Failover_ReplicaQueSumiuDaRede_LeiturasNaoFicamPenduradas` (destino não roteável).
 
 ## Referências
 - [YARP — Yet Another Reverse Proxy](https://github.com/dotnet/yarp)

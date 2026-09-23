@@ -67,7 +67,7 @@ public static class DependencyInjection
         services.AddMassTransit(bus =>
         {
             bus.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter("consolidado", includeNamespace: false));
-            bus.AddConsumer<LancamentoRegistradoConsumer>();
+            bus.AddConsumer<LancamentoRegistradoConsumer, LancamentoRegistradoConsumerDefinition>();
 
             bus.UsingRabbitMq((context, rabbit) =>
             {
