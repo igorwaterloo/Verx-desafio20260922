@@ -1,7 +1,5 @@
 using System.Text.Json.Serialization;
 using Asp.Versioning;
-using FluxoCaixa.SharedKernel.Tenancy;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
@@ -10,13 +8,6 @@ using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 
 namespace FluxoCaixa.Infrastructure.Common.Web;
-
-/// <summary>Políticas de autorização por papel do tenant (RN-10).</summary>
-public static class Politicas
-{
-    public const string Operador = "Operador";
-    public const string Admin = "Admin";
-}
 
 /// <summary>
 /// Configuração padrão das Web APIs da plataforma: controllers, versionamento na URL,
@@ -86,35 +77,5 @@ public static class WebApiDefaults
         app.MapControllers();
 
         return app;
-    }
-
-    private static void AddAutenticacaoKeycloak(this IServiceCollection services, IConfiguration configuration)
-    {
-        var opcoes = configuration.GetSection("Autenticacao");
-
-        services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                // Metadados/JWKS obtidos pelo endereço interno do Keycloak; o emissor (iss) é o público.
-                options.Authority = opcoes["Authority"];
-                options.Audience = opcoes["Audiencia"] ?? "fluxo-caixa-api";
-                options.RequireHttpsMetadata = opcoes.GetValue("RequireHttpsMetadata", defaultValue: true);
-                options.MapInboundClaims = false;
-                options.TokenValidationParameters.NameClaimType = "preferred_username";
-                options.TokenValidationParameters.RoleClaimType = TenantClaims.Roles;
-                if (opcoes["EmissorValido"] is { Length: > 0 } emissor)
-                {
-                    options.TokenValidationParameters.ValidIssuer = emissor;
-                }
-            });
-
-        services.AddAuthorizationBuilder()
-            .AddPolicy(Politicas.Operador, p => p.RequireRole(TenantRoles.Operador, TenantRoles.Admin))
-            .AddPolicy(Politicas.Admin, p => p.RequireRole(TenantRoles.Admin))
-            // Seguro por padrão: todo endpoint exige autenticação, salvo [AllowAnonymous].
-            .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build());
     }
 }
