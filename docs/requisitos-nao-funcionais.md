@@ -35,6 +35,21 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | SLO-10 | Noisy neighbor | Tenant B mantém SLO-04/05 enquanto o tenant A excede o próprio limite | k6 com dois tenants simultâneos: A recebe 429, B sem degradação |
 | SLO-11 | Onboarding | p95 **< 3 s** com status `Ativo`; tenants `Pendente` resolvidos em **< 10 min** | Métricas `tenants.provisionamento.duracao` e `tenants.pendentes` |
 
+### Medido (Fase 8)
+
+Execução local com o compose; detalhes, máquina e como reproduzir em [testes.md](testes.md#resultados-dos-testes-de-carga-fase-8).
+
+| SLO | Meta | Medido |
+|---|---|---|
+| SLO-02 | 100% de 201 com o Consolidado fora | **100%**: 3.601 lançamentos com Consolidado fora; 3.600 com RabbitMQ fora |
+| SLO-03 | ≥ 50 req/s por 5 min | **50 req/s por 5 min** (15.001 requisições) + pico de 100 req/s |
+| SLO-04 | ≤ 5% de erro (meta interna < 1%) | **0%** sustentado e em pico; **0,49%** de perda com uma réplica derrubada durante a carga |
+| SLO-05 | p95 < 200 ms, p99 < 500 ms | p95 **6,8 ms**, p99 **9,4 ms** (com uma réplica derrubada: p99 344 ms) |
+| SLO-06 | POST p95 < 300 ms | p95 **33 ms** a 50 req/s |
+| SLO-07 | < 5 s | Saldo igual à soma dos lançamentos **0,57 s** após o fim de 3 min a 50 req/s |
+| SLO-08 | 100% íntegro | Soma dos lançamentos = consolidado em todas as execuções, inclusive após quedas do Consolidado e do broker |
+| SLO-10 | Tenant B sem degradação | Pro com **0% de erro** e p95 7,9 ms enquanto o Free recebia 66% de 429 |
+
 ## 3. Confiabilidade, Integridade e Disponibilidade
 
 | Pilar | Meta | Mecanismos |

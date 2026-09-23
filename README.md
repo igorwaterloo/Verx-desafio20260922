@@ -97,7 +97,7 @@ O repositório tem três blocos: **app** (frontend), **api** (backend) e **tests
 │     ├─ Tenants/                  ← serviço (contexto Plataforma)
 │     ├─ Lancamentos/              ← serviço (contexto Lançamentos)
 │     └─ Consolidado/              ← serviço (contexto Consolidado) + Worker
-├─ tests/                          ← testes unitários, de arquitetura e de integração (k6 em tests/stress)
+├─ tests/                          ← testes unitários, de arquitetura, de integração e de carga (k6 em tests/stress)
 ├─ docs/                           ← C4, ADRs, domínio, requisitos não funcionais
 └─ FluxoCaixa.slnx                 ← solução .NET
 ```
@@ -323,6 +323,24 @@ cd src/app/fluxo-caixa-web && npm ci && npx ng test --watch=false
 | Unitários (Vitest) | Validadores (CNPJ, senha, datas), conversão de erros ProblemDetails/429/503, clientes das APIs (`Idempotency-Key`), guards por papel, cadastro pendente (503), idempotência no reenvio, banner de consolidado indisponível |
 | E2E (Playwright) | Cadastro → login OIDC → lançamentos → saldo consolidado, com a CSP de produção ativa |
 
+**Carga e caos** (k6 em container, contra a stack do compose no ar):
+
+```powershell
+./scripts/carga.ps1 consolidado-50rps     # 50 req/s por 5 min + pico de 100 req/s (RNF-02)
+./scripts/carga.ps1 lancamentos-carga     # escrita concorrente, idempotência e convergência do saldo
+./scripts/carga.ps1 noisy-neighbor        # tenant Free acima do limite × tenant Pro
+./scripts/caos.ps1 consolidado            # Consolidado fora durante a escrita (RNF-01); também: broker, replica
+```
+
+| Resultado (máquina local) | |
+|---|---|
+| Consolidado a 50 req/s por 5 min | **0% de erro**, p95 6,8 ms, p99 9,4 ms; pico de 100 req/s com 0% de erro |
+| Lançamentos a 50 req/s | 0% de erro, p95 33 ms; saldo consolidado igual à soma **0,57 s** após a carga |
+| Consolidado, RabbitMQ ou uma réplica fora do ar | Lançamentos com **0% de erro**; saldo converge; com uma réplica fora, 0,49% de perda nas consultas |
+| Vizinho barulhento | Free recebe 429 no limite do plano; Pro sem degradação |
+
+Os testes de carga encontraram e ajudaram a corrigir dois defeitos (detalhes em [docs/testes.md](docs/testes.md#resultados-dos-testes-de-carga-fase-8)).
+
 Estratégia completa: [docs/testes.md](docs/testes.md).
 
 ## Documentação
@@ -340,7 +358,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
 - [x] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
 - [x] Fase 7 — Frontend Angular (cadastro da empresa, lançamentos, consolidado, gestão de plano e usuários)
-- [ ] Fase 8 — Testes de stress e resiliência (inclui noisy neighbor)
+- [x] Fase 8 — Testes de carga e resiliência com k6 (inclui noisy neighbor e caos)
 - [ ] Fase 9 — Observabilidade e CI
 - [ ] Fase 10 — Documentação final
 
