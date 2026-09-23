@@ -209,7 +209,7 @@ flowchart TB
     dlq{{"<b>DLQ</b><br/>..._error"}}
 
     subgraph worker["Consolidado.Worker [Container]"]
-        consumer["<b>LancamentoRegistradoConsumer</b><br/><i>[MassTransit]</i><br/>Retry exponencial,<br/>TenantContext da mensagem"]
+        consumer["<b>LancamentoRegistradoConsumer</b><br/><i>[MassTransit]</i><br/>Particionado por tenant + dia,<br/>retry exponencial,<br/>TenantContext da mensagem"]
         handler["<b>AplicarLancamentoNoSaldo</b><br/><i>[Application]</i><br/>Idempotente por EventId"]
         dom["<b>Domínio</b><br/><i>[Domain]</i><br/>SaldoDiario, RC-01..05"]
         repo["<b>Repositório + Inbox</b><br/><i>[Infrastructure / EF Core]</i><br/>Upsert + EventId na<br/>mesma transação"]
@@ -240,10 +240,10 @@ flowchart TB
 
 | Componente | Responsabilidade | Padrões |
 |---|---|---|
-| Consumer | Adapter do broker para o caso de uso; define o tenant a partir do evento; retry com backoff exponencial; mensagens que falham de vez vão para a DLQ. | Competing Consumers, Retry, Dead Letter Channel |
+| Consumer | Adapter do broker para o caso de uso; define o tenant a partir do evento; **particionado por tenant + data de competência** (eventos da mesma linha de saldo em série, linhas diferentes em paralelo — encontrado no teste de carga, [ADR-0010](../adr/0010-separacao-consolidado-api-worker.md)); retry com backoff exponencial; mensagens que falham de vez vão para a DLQ. | Competing Consumers, Partitioned Consumer, Retry, Dead Letter Channel |
 | AplicarLancamentoNoSaldo | Verifica se o `EventId` já está na inbox e ignora o evento se já foi processado. Se não, aplica no `SaldoDiario` e grava inbox + saldo na mesma transação. | Idempotent Receiver |
 | Domínio | `SaldoDiario.Aplicar(tipo, valor)`, com operação comutativa. | DDD Aggregate |
-| Repositório + Inbox | Upsert com concorrência otimista (`rowversion`); conflito leva a retry. | Inbox, Optimistic Concurrency |
+| Repositório + Inbox | Upsert com concorrência otimista (`rowversion`); um conflito (só possível entre instâncias do worker) leva a retry, medido por `consolidado.retentativas`. | Inbox, Optimistic Concurrency |
 | Invalidador | Remove a chave do tenant/dia afetado após o commit. Se falhar, o TTL limita o tempo de dado desatualizado. | Cache invalidation |
 
 ---

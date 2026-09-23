@@ -36,7 +36,11 @@ Adotar essas versões sem avaliação cria **risco jurídico e de custo** para a
 | Cache | **StackExchange.Redis** (cliente) | MIT | — |
 | Servidor de cache | **Redis 8** (imagem oficial, usado sem modificação) | AGPLv3 (opção open source do Redis 8) | Redis 7.4–7.x: RSALv2/SSPL, não open source. **Valkey** (BSD, fork da Linux Foundation) é a alternativa compatível caso a AGPL seja restrição |
 | Resiliência | **Microsoft.Extensions.Resilience** (Polly v8) | BSD-3 | — |
-| Observabilidade | **OpenTelemetry .NET**, **Serilog** | Apache 2.0 | — |
+| Observabilidade | **OpenTelemetry .NET** (somente pacotes estáveis) | Apache 2.0 | Serilog: dispensado na implementação, o `ILogger` exporta direto via OTLP ([ADR-0011](0011-observabilidade-opentelemetry.md)) |
+| Frontend | **Angular**, **Angular Material**, **angular-auth-oidc-client**, **material-symbols** (ícones servidos localmente) | MIT / Apache 2.0 | Bibliotecas de gráfico: gráfico próprio em SVG ([ADR-0018](0018-frontend-angular-spa.md)) |
+| Testes do frontend e E2E | **Vitest**, **Playwright** | MIT / Apache 2.0 | Karma/Jasmine: substituídos pelo Vitest no Angular atual |
+| Carga | **k6** (ferramenta executada em container) | AGPLv3 | A AGPL não afeta o produto: o k6 não é distribuído nem linkado, só executa os scripts de teste |
+| Relatório de cobertura | **ReportGenerator** (ferramenta de CI) | Apache 2.0 | — |
 
 **Isolamento do MassTransit:** a Application publica via uma porta própria (`IEventPublisher`), e o consumer é um adaptador fino que chama o command handler. Se a v8 deixar de ser suportada, as saídas são migrar para a v9 comercial, para **Wolverine** ou para **RabbitMQ.Client** com o outbox próprio, **sem tocar em Domain e Application**.
 
