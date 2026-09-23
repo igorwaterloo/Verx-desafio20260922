@@ -87,7 +87,7 @@ flowchart LR
 | **Consolidado.Api** | .NET 10 Web API (controllers), EF Core, Redis | Consultas de saldo com cache-aside; se o Redis falhar, lê do banco. | **2 réplicas** localmente; HPA em produção |
 | **ConsolidadoDb** | SQL Server 2022 | Projeção de saldos por tenant e inbox. | Independente dos outros bancos |
 | **Redis** | Redis 8 | Cache das consultas de consolidado (chaves prefixadas pelo tenant). | Réplica / cluster (produção) |
-| **Aspire Dashboard** | OpenTelemetry (OTLP) | Observabilidade local (traces distribuídos pela fila, métricas com `tenant.id`). | Em produção: Azure Monitor |
+| **Aspire Dashboard** | OpenTelemetry (OTLP) | Observabilidade local: traces distribuídos pela fila e logs com `tenant.id`; métricas por plano (sem tenant, por cardinalidade). Ver [observabilidade](../observabilidade.md). | Em produção: Azure Monitor |
 
 ## Como a arquitetura atende aos requisitos não funcionais
 

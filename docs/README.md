@@ -2,6 +2,8 @@
 
 Índice de toda a documentação de arquitetura e de projeto da plataforma **SaaS multi-tenant** de fluxo de caixa.
 
+> **Comece por aqui:** [requisitos do desafio × solução](requisitos-atendidos.md): cada requisito do enunciado com a decisão, a implementação e a evidência.
+
 ## Arquitetura
 
 | Documento | Conteúdo |

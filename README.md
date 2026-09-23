@@ -4,7 +4,29 @@
 
 Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa diário: **lançamentos** (débitos e créditos) e **relatório de saldo diário consolidado**. Cada empresa é um tenant, com seus usuários, seu plano e seus dados isolados.
 
-> 🚧 Em construção. Este README é atualizado a cada entrega. Veja o andamento em [Roadmap](#roadmap).
+## Em uma página
+
+| | |
+|---|---|
+| **Problema** | Um comerciante precisa registrar os lançamentos do caixa (débitos e créditos) e consultar o saldo diário consolidado |
+| **Solução** | Microsserviços por contexto (Lançamentos, Consolidado e Plataforma/Tenants) em .NET 10, integrados por eventos (RabbitMQ + Transactional Outbox), atrás de um API Gateway, com SPA Angular e login no Keycloak. Oferecido como **SaaS multi-tenant** |
+| **Lançamentos não cai com o Consolidado** (RNF-01) | Nenhuma chamada síncrona entre os dois. Medido: **0% de erro** nos lançamentos com o Consolidado ou o RabbitMQ parados por 60 s, e saldo idêntico após a recuperação |
+| **50 req/s com ≤ 5% de perda** (RNF-02) | Leitura separada da escrita, duas réplicas balanceadas e cache Redis. Medido: **0% de erro** a 50 req/s por 5 min (p95 de 6,8 ms), 0% a 100 req/s e **0,49%** com uma réplica derrubada durante a carga |
+| **Qualidade** | 259 testes .NET (**93,1%** de cobertura de linhas), 49 do frontend, E2E, carga e caos com k6, tudo no CI |
+| **Decisões** | 18 ADRs, C4 (níveis 1 a 3), 13 fluxos de sequência, SLOs com meta × medido, análise de segurança (STRIDE) |
+
+**Rastreabilidade completa** entre cada requisito do enunciado, a decisão, a implementação e a evidência: [docs/requisitos-atendidos.md](docs/requisitos-atendidos.md).
+
+## Início rápido
+
+Pré-requisito: Docker Desktop (com WSL2 no Windows).
+
+```bash
+cd deploy && cp .env.example .env
+docker compose up -d --build --wait     # ~5 min na primeira vez (compila as imagens)
+```
+
+Depois abra **http://localhost:4200** e entre com `admin.mercado` / `Senha@123`, ou cadastre uma empresa nova. Traces e métricas ficam em http://localhost:18888. Detalhes em [Como executar localmente](#como-executar-localmente).
 
 ## Sumário
 - [Visão geral](#visão-geral)
@@ -12,9 +34,11 @@ Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa 
 - [Stack](#stack)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Como executar localmente](#como-executar-localmente)
+- [Aplicação web](#aplicação-web)
 - [API de Tenants (Plataforma)](#api-de-tenants-plataforma)
 - [API de Lançamentos](#api-de-lançamentos)
 - [API de Consolidado](#api-de-consolidado)
+- [Observabilidade](#observabilidade)
 - [Segurança](#segurança)
 - [Testes](#testes)
 - [Documentação](#documentação)
@@ -73,14 +97,15 @@ flowchart LR
 | Camada | Tecnologia |
 |---|---|
 | Backend | .NET 10 (C#), ASP.NET Core Web API (controllers), EF Core |
-| Frontend | Angular |
+| Frontend | Angular 22 (standalone, signals, zoneless), Angular Material, OIDC com PKCE, nginx |
 | Banco de dados | SQL Server 2022 (Docker), database-per-service, discriminador `TenantId` |
 | Mensageria | RabbitMQ (MassTransit) |
 | Cache | Redis |
 | Identidade | Keycloak (OIDC / JWT, Organizations) |
 | Gateway | YARP |
-| Testes | xUnit, NSubstitute, Shouldly, Testcontainers, NetArchTest, k6 |
-| Infra local | Docker Compose |
+| Observabilidade | OpenTelemetry (OTLP) → Aspire Dashboard |
+| Testes | xUnit v3, NSubstitute, Shouldly, Testcontainers, NetArchTest, Vitest, Playwright, k6 |
+| Infra local e CI | Docker Compose, GitHub Actions, Dependabot |
 
 ## Estrutura do repositório
 
@@ -88,7 +113,7 @@ O repositório tem três blocos: **app** (frontend), **api** (backend) e **tests
 
 ```
 ├─ src/
-│  ├─ app/                         ← Frontend Angular (SPA)
+│  ├─ app/fluxo-caixa-web/         ← Frontend Angular (SPA) + E2E (Playwright)
 │  └─ api/                         ← Backend .NET 10 (C#)
 │     ├─ BuildingBlocks/           ← código compartilhado entre os serviços
 │     │  ├─ FluxoCaixa.SharedKernel          (Result, Entity, abstrações CQRS e de tenant — sem dependências)
@@ -100,7 +125,10 @@ O repositório tem três blocos: **app** (frontend), **api** (backend) e **tests
 │     ├─ Lancamentos/              ← serviço (contexto Lançamentos)
 │     └─ Consolidado/              ← serviço (contexto Consolidado) + Worker
 ├─ tests/                          ← testes unitários, de arquitetura, de integração e de carga (k6 em tests/stress)
-├─ docs/                           ← C4, ADRs, domínio, requisitos não funcionais
+├─ docs/                           ← C4, ADRs, domínio, requisitos, segurança, observabilidade, testes
+├─ deploy/                         ← docker-compose, realm do Keycloak, .env.example
+├─ scripts/                        ← testes em container, E2E, carga e caos
+├─ .github/                        ← CI (GitHub Actions) e Dependabot
 └─ FluxoCaixa.slnx                 ← solução .NET
 ```
 
@@ -373,7 +401,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 7 — Frontend Angular (cadastro da empresa, lançamentos, consolidado, gestão de plano e usuários)
 - [x] Fase 8 — Testes de carga e resiliência com k6 (inclui noisy neighbor e caos)
 - [x] Fase 9 — Observabilidade (OpenTelemetry + Aspire) e CI (GitHub Actions)
-- [ ] Fase 10 — Documentação final
+- [x] Fase 10 — Documentação final (rastreabilidade dos requisitos, revisão de consistência)
 
 ## Contribuição
 Fluxo de branches e padrão de commits: veja [CONTRIBUTING.md](CONTRIBUTING.md).

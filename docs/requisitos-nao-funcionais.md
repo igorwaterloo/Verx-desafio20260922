@@ -29,7 +29,7 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | SLO-04 | Taxa de erro do Consolidado sob pico | **≤ 5%** (requisito); **< 1%** (meta interna) | Threshold k6 `http_req_failed` |
 | SLO-05 | Latência do Consolidado | p95 **< 200 ms**, p99 **< 500 ms** | Threshold k6 `http_req_duration` |
 | SLO-06 | Latência de Lançamentos (POST) | p95 **< 300 ms** | Threshold k6 |
-| SLO-07 | Atraso da consolidação (lançamento → saldo atualizado) | p95 **< 5 s** em operação normal | Diferença entre `ocorridoEm` do evento e o commit do saldo (métrica customizada `consolidado.lag`) |
+| SLO-07 | Atraso da consolidação (lançamento → saldo atualizado) | p95 **< 5 s** em operação normal | Diferença entre `ocorridoEm` do evento e o commit do saldo (histograma `consolidado.atraso` — [observabilidade](observabilidade.md)) |
 | SLO-08 | Integridade do saldo | **100%**: saldo = Σ créditos − Σ débitos, sem duplicidade | Testes de integração (entrega duplicada e fora de ordem) + reconciliação |
 | SLO-09 | Isolamento entre tenants | **Zero** vazamentos | Testes de integração de isolamento obrigatórios em cada serviço (leitura, listagem, estorno, consolidado, cache) + teste de arquitetura (`ITenantEntity`) |
 | SLO-10 | Noisy neighbor | Tenant B mantém SLO-04/05 enquanto o tenant A excede o próprio limite | k6 com dois tenants simultâneos: A recebe 429, B sem degradação |

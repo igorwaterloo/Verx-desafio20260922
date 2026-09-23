@@ -12,10 +12,10 @@ As decisões arquiteturais são registradas no formato [MADR](https://adr.github
 | [0006](0006-cache-aside-redis.md) | Cache-aside com Redis e fallback | Desempenho | Aceita (complementada pela 0015) |
 | [0007](0007-sql-server-ef-core-database-per-service.md) | SQL Server + EF Core, database-per-service | Persistência | Aceita (complementada pelas 0015 e 0017) |
 | [0008](0008-autenticacao-keycloak-oidc-jwt.md) | Autenticação com Keycloak (OIDC/JWT) | Segurança | Aceita (complementada pelas 0015 e 0017) |
-| [0009](0009-api-gateway-yarp.md) | API Gateway com YARP | Integração / segurança | Aceita (complementada pelas 0015 e 0017) |
-| [0010](0010-separacao-consolidado-api-worker.md) | Separação Consolidado Api / Worker | Escalabilidade | Aceita |
-| [0011](0011-observabilidade-opentelemetry.md) | Observabilidade com OpenTelemetry | Operação | Aceita |
-| [0012](0012-estrategia-de-testes.md) | Estratégia de testes (TDD, pirâmide, k6) | Qualidade | Aceita |
+| [0009](0009-api-gateway-yarp.md) | API Gateway com YARP | Integração / segurança | Aceita (complementada pelas 0015 e 0017; failover ajustado após o teste de caos) |
+| [0010](0010-separacao-consolidado-api-worker.md) | Separação Consolidado Api / Worker | Escalabilidade | Aceita (consumo particionado após o teste de carga) |
+| [0011](0011-observabilidade-opentelemetry.md) | Observabilidade com OpenTelemetry | Operação | Aceita (atualizada com a implementação) |
+| [0012](0012-estrategia-de-testes.md) | Estratégia de testes (TDD, pirâmide, k6) | Qualidade | Aceita (resultados de carga e CI) |
 | [0013](0013-bibliotecas-e-licencas.md) | Escolha de bibliotecas e licenças | Governança | Aceita |
 | [0014](0014-lancamentos-imutaveis-com-estorno.md) | Lançamentos imutáveis com estorno | Domínio | Aceita |
 | [0015](0015-multi-tenancy-banco-compartilhado.md) | SaaS multi-tenant com banco compartilhado e `TenantId` | SaaS / isolamento | Aceita |
