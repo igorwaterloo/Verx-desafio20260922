@@ -1,0 +1,7 @@
+{
+  "apiUrl": "http://localhost:8080",
+  "oidc": {
+    "authority": "http://localhost:8081/realms/fluxo-caixa",
+    "clientId": "fluxo-caixa-web"
+  }
+}

@@ -12,7 +12,7 @@ flowchart TB
 
     subgraph host["Docker Desktop — rede bridge fluxo-caixa"]
         direction TB
-        web["<b>web</b><br/>nginx:alpine<br/>:4200"]
+        web["<b>web</b><br/>nginx-unprivileged<br/>:4200"]
         kc["<b>keycloak</b><br/>keycloak:26.7<br/>:8081"]
         gw["<b>gateway</b><br/>.NET 10 + YARP<br/>:8080"]
 
@@ -54,7 +54,7 @@ flowchart TB
 
 | Serviço | Imagem | Porta no host | Healthcheck | Observação |
 |---|---|---|---|---|
-| `web` | nginx:alpine (build multi-stage) | 4200 | `GET /` | SPA |
+| `web` | `src/app/fluxo-caixa-web/Dockerfile` (Node → nginx sem privilégios) | 4200 | `/health` | SPA. `config.json` e CSP gerados na inicialização a partir de `API_URL`, `OIDC_AUTHORITY` e `OIDC_CLIENT_ID` ([ADR-0018](../adr/0018-frontend-angular-spa.md)) |
 | `gateway` | `src/api/Dockerfile` | **8080** | `/health/live` | **Entrada única da aplicação**: JWT, rate limiting por tenant/plano, CORS, headers de segurança; round-robin entre as réplicas do Consolidado com health checks ativo (5 s) e passivo e retentativa de leituras em outra réplica. Ambiente `Docker` (destinos pelos nomes dos serviços) |
 | `tenants-api` | `src/api/Dockerfile` | 5301 | `/health/ready` (SQL Server + RabbitMQ) | Onboarding, planos e usuários; Admin API do Keycloak pela rede interna com a conta de serviço; aplica migrations e **semeia os tenants de demonstração** (publica os planos para o Lançamentos) |
 | `lancamentos-api` | `src/api/Dockerfile` (aspnet:10.0, usuário não-root) | 5101 | `/health/ready` (SQL Server + RabbitMQ) | Aplica as migrations na inicialização; consome eventos de tenant/plano; valida JWT com JWKS pelo endereço interno do Keycloak |

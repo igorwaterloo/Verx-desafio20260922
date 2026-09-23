@@ -122,3 +122,4 @@ Detalhes e metas numéricas: [requisitos não funcionais](../requisitos-nao-func
 | Multi-tenancy | [ADR-0015](../adr/0015-multi-tenancy-banco-compartilhado.md) |
 | Web APIs com controllers | [ADR-0016](../adr/0016-web-api-com-controllers.md) |
 | Tenants.Api (Plataforma) | [ADR-0017](../adr/0017-contexto-plataforma-onboarding-planos.md) |
+| Web App (SPA) | [ADR-0018](../adr/0018-frontend-angular-spa.md) |

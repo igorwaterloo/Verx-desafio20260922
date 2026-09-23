@@ -98,6 +98,22 @@ services:
   # ---------------------------------------------------------------------------
 
   # Entrada única da aplicação (ADR-0009): a SPA e os clientes externos falam só com o gateway.
+  # SPA Angular (nginx). URLs públicas: o navegador fala direto com o gateway e o Keycloak.
+  web:
+    <<: *restart
+    image: fluxo-caixa/web:dev
+    build:
+      context: ../src/app/fluxo-caixa-web
+    environment:
+      API_URL: http://localhost:8080
+      OIDC_AUTHORITY: http://localhost:8081/realms/fluxo-caixa
+      OIDC_CLIENT_ID: fluxo-caixa-web
+    ports:
+      - "4200:8080"
+    depends_on:
+      gateway:
+        condition: service_healthy
+
   gateway:
     <<: *restart
     image: fluxo-caixa/gateway:dev

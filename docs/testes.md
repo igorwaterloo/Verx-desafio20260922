@@ -10,7 +10,8 @@
 | **Arquitetura** | NetArchTest | Regras de dependência da Clean Architecture; controllers sem acesso a Infrastructure; toda entidade de negócio implementa `ITenantEntity`. |
 | **Contrato** | xUnit + System.Text.Json | JSON dos eventos de integração igual ao publicado em `dominio.md`; mudança incompatível quebra o build antes de quebrar um consumidor. |
 | **Integração** | WebApplicationFactory, Testcontainers (SQL Server, RabbitMQ, Redis) | Endpoints de ponta a ponta no serviço, persistência, outbox, consumidor idempotente, cache, **isolamento entre tenants** e quota. |
-| **Frontend** | Test runner do Angular (unitários) | Services, componentes, interceptors, guards por papel. |
+| **Frontend (unitários)** | Vitest + jsdom (`ng test`), TestBed, `HttpTestingController` | Validadores, conversão de erros (ProblemDetails, 429, 503), clientes das APIs (`Idempotency-Key`), guards por papel, páginas (idempotência no reenvio, cadastro pendente, banner de consolidado indisponível). |
+| **E2E (smoke)** | Playwright em container, contra o `docker compose` | Cadastro da empresa → login OIDC real no Keycloak → crédito e débito → saldo consolidado converge. Roda com a CSP de produção. |
 | **Carga / stress** | k6 | SLO-03..SLO-06: 50 req/s no Consolidado com ≤ 5% de erro (tenants no plano Pro). |
 | **Noisy neighbor** | k6 | SLO-10: um tenant excedendo o limite recebe 429 sem degradar outro tenant. |
 | **Resiliência (caos)** | k6 + `docker compose stop` | SLO-02: Lançamentos disponível com o Consolidado (e a Plataforma) fora. |
@@ -36,6 +37,8 @@ Uma falha nesses testes **bloqueia o merge e o deploy**.
 - **Runner:** Microsoft Testing Platform (MTP), habilitado em `global.json`. Comando: `dotnet test`.
 - **Cobertura:** `Microsoft.Testing.Extensions.CodeCoverage` (`dotnet test -- --coverage`).
 - **Em container:** `scripts/test.ps1` (Windows) ou `scripts/test.sh` (Linux/macOS) executam build e testes no `mcr.microsoft.com/dotnet/sdk:10.0`, sem exigir o SDK .NET na máquina. É o mesmo ambiente do CI.
+- **Frontend:** `npx ng test --watch=false` em `src/app/fluxo-caixa-web` (49 testes).
+- **E2E:** `scripts/test-e2e.ps1` / `scripts/test-e2e.sh`, com a stack do compose no ar. A imagem `mcr.microsoft.com/playwright` usa a rede do host para acessar a SPA (:4200), o gateway (:8080) e o Keycloak (:8081) pelos mesmos endereços do navegador. Cada execução cadastra uma empresa nova com CNPJ gerado.
 
 ## TDD
 

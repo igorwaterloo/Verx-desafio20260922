@@ -1,0 +1,115 @@
+<h1>Lançamentos</h1>
+
+<mat-card appearance="outlined" class="novo">
+  <mat-card-header>
+    <mat-card-title>Novo lançamento</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="formulario" (ngSubmit)="registrar()" class="formulario">
+      <mat-button-toggle-group formControlName="tipo" aria-label="Tipo do lançamento">
+        <mat-button-toggle value="Credito"><mat-icon>arrow_downward</mat-icon> Crédito</mat-button-toggle>
+        <mat-button-toggle value="Debito"><mat-icon>arrow_upward</mat-icon> Débito</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <mat-form-field class="valor">
+        <mat-label>Valor (R$)</mat-label>
+        <input matInput type="number" step="0.01" min="0.01" formControlName="valor" />
+        <mat-error>Informe um valor maior que zero.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field class="data">
+        <mat-label>Data de competência</mat-label>
+        <input matInput [matDatepicker]="seletorCompetencia" [max]="hoje" formControlName="dataCompetencia" />
+        <mat-datepicker-toggle matIconSuffix [for]="seletorCompetencia" />
+        <mat-datepicker #seletorCompetencia />
+        <mat-error>A data não pode ser futura.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field class="descricao">
+        <mat-label>Descrição</mat-label>
+        <input matInput formControlName="descricao" maxlength="200" />
+        <mat-error>Informe de 3 a 200 caracteres.</mat-error>
+      </mat-form-field>
+
+      <button mat-flat-button type="submit" [disabled]="salvando()">
+        <mat-icon>add</mat-icon> Registrar
+      </button>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+<div class="filtro">
+  <mat-form-field>
+    <mat-label>Lançamentos do dia</mat-label>
+    <input matInput [matDatepicker]="seletorDia" [max]="hoje" [value]="data()" (dateChange)="trocarData($event.value)" />
+    <mat-datepicker-toggle matIconSuffix [for]="seletorDia" />
+    <mat-datepicker #seletorDia />
+  </mat-form-field>
+</div>
+
+@if (carregando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+@if (erroLista(); as erro) {
+  <p class="erro" role="alert"><mat-icon>error</mat-icon> {{ erro }}</p>
+} @else if (pagina(); as resultado) {
+  <table mat-table [dataSource]="resultado.itens" class="tabela">
+    <ng-container matColumnDef="tipo">
+      <th mat-header-cell *matHeaderCellDef>Tipo</th>
+      <td mat-cell *matCellDef="let l">
+        <span class="tipo" [class.credito]="l.tipo === 'Credito'" [class.debito]="l.tipo === 'Debito'">
+          {{ l.tipo === 'Credito' ? 'Crédito' : 'Débito' }}
+        </span>
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="descricao">
+      <th mat-header-cell *matHeaderCellDef>Descrição</th>
+      <td mat-cell *matCellDef="let l">{{ l.descricao }}</td>
+    </ng-container>
+    <ng-container matColumnDef="valor">
+      <th mat-header-cell *matHeaderCellDef class="numero">Valor</th>
+      <td mat-cell *matCellDef="let l" class="numero" [class.debito]="l.tipo === 'Debito'">
+        {{ l.tipo === 'Debito' ? '−' : '' }}{{ l.valor | currency }}
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="criadoEm">
+      <th mat-header-cell *matHeaderCellDef>Registrado</th>
+      <td mat-cell *matCellDef="let l">{{ l.criadoEm | date: 'HH:mm' }}</td>
+    </ng-container>
+    <ng-container matColumnDef="situacao">
+      <th mat-header-cell *matHeaderCellDef>Situação</th>
+      <td mat-cell *matCellDef="let l">
+        @if (l.estornado) {
+          <span class="situacao">Estornado</span>
+        } @else if (l.lancamentoOriginalId) {
+          <span class="situacao">Estorno</span>
+        }
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="acoes">
+      <th mat-header-cell *matHeaderCellDef></th>
+      <td mat-cell *matCellDef="let l" class="acoes">
+        @if (podeEstornar(l)) {
+          <button mat-icon-button (click)="estornar(l)" matTooltip="Estornar" aria-label="Estornar lançamento">
+            <mat-icon>undo</mat-icon>
+          </button>
+        }
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+    <tr mat-row *matRowDef="let linha; columns: colunas"></tr>
+    <tr class="mat-row" *matNoDataRow>
+      <td class="mat-cell vazio" [attr.colspan]="colunas.length">Nenhum lançamento nesta data.</td>
+    </tr>
+  </table>
+
+  <mat-paginator
+    [length]="resultado.total"
+    [pageIndex]="resultado.numeroPagina - 1"
+    [pageSize]="resultado.tamanhoPagina"
+    [pageSizeOptions]="[10, 20, 50]"
+    (page)="trocarPagina($event)"
+  />
+}
