@@ -1,0 +1,56 @@
+# Verificação ponta a ponta sob demanda: sobe a stack completa do compose no runner, executa o smoke
+# E2E (Playwright) e uma rodada curta dos testes de carga (k6). Manual por ser longa (~10 min).
+name: E2E e carga
+
+on:
+  workflow_dispatch:
+    inputs:
+      duracao:
+        description: Duração do regime sustentado do consolidado-50rps
+        default: 1m
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Subir a stack
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait --wait-timeout 600
+
+      - name: Smoke E2E (Playwright)
+        run: sh scripts/test-e2e.sh
+
+      - name: Carga (k6)
+        run: |
+          sh scripts/carga.sh consolidado-50rps -q -e DURACAO=${{ inputs.duracao }} -e DURACAO_PICO=30s
+          sh scripts/carga.sh noisy-neighbor -q -e DURACAO=30s
+          sh scripts/carga.sh lancamentos-carga -q -e DURACAO=30s
+
+      - name: Logs da stack
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs --no-color > ../compose.log
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: resultados-e2e-carga
+          path: |
+            tests/stress/k6/resultados/
+            src/app/fluxo-caixa-web/e2e/playwright-report/
+            compose.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Derrubar a stack
+        if: always()
+        working-directory: deploy
+        run: docker compose down -v
