@@ -55,7 +55,7 @@ flowchart TB
 | Serviço | Imagem | Porta no host | Healthcheck | Observação |
 |---|---|---|---|---|
 | `web` | nginx:alpine (build multi-stage) | 4200 | `GET /` | SPA |
-| `gateway` | .NET 10 (build) | 8080 | `/health/ready` | Única porta de API exposta para a SPA |
+| `gateway` | `src/api/Dockerfile` | **8080** | `/health/live` | **Entrada única da aplicação**: JWT, rate limiting por tenant/plano, CORS, headers de segurança; round-robin entre as réplicas do Consolidado com health checks ativo (5 s) e passivo e retentativa de leituras em outra réplica. Ambiente `Docker` (destinos pelos nomes dos serviços) |
 | `tenants-api` | `src/api/Dockerfile` | 5301 | `/health/ready` (SQL Server + RabbitMQ) | Onboarding, planos e usuários; Admin API do Keycloak pela rede interna com a conta de serviço; aplica migrations e **semeia os tenants de demonstração** (publica os planos para o Lançamentos) |
 | `lancamentos-api` | `src/api/Dockerfile` (aspnet:10.0, usuário não-root) | 5101 | `/health/ready` (SQL Server + RabbitMQ) | Aplica as migrations na inicialização; consome eventos de tenant/plano; valida JWT com JWKS pelo endereço interno do Keycloak |
 | `consolidado-api-1/2` | `src/api/Dockerfile` | 5201 / 5202 (depuração) | `/health/ready` (SQL Server) | Somente leitura, com cache Redis; o tráfego da aplicação passa pelo gateway; duas instâncias explícitas para demonstrar balanceamento e failover. Redis fora deixa o health `Degraded`, sem tirar a réplica do balanceamento |

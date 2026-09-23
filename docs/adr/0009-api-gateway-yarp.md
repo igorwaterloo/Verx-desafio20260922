@@ -67,6 +67,14 @@ A SPA consome dois serviços, e o Consolidado roda com **várias réplicas** (RN
 
 - **2026-09-22 — SaaS:** o rate limiting passa a ser **particionado por tenant** (claim `tenant_id`), com o limite definido pela claim `plano` (Free: 20 req/s; Pro: 100 req/s), mais um limite por usuário para evitar abuso de um único usuário. As rotas públicas de onboarding (`POST /api/v1/tenants`, `GET /api/v1/planos`) têm limite **por IP** rigoroso. Nova rota: `/api/v1/tenants/**` e `/api/v1/planos/**` → cluster `tenants`. Estouro do limite responde **429** com `Retry-After`.
 
+- **2026-09-22 — Implementação (Fase 6):**
+  - **Retentativa em outra réplica** implementada como middleware no pipeline do YARP: GET/HEAD com falha de transporte e resposta ainda não iniciada são reenviados a outra réplica disponível; escritas nunca são repetidas pelo gateway. A necessidade apareceu na verificação ponta a ponta: uma réplica que acabou de atender uma rajada e cai mantém a taxa de falhas abaixo do limite do health check passivo por vários segundos, e metade das consultas voltava 502. Com a retentativa, 12 de 12 consultas responderam 200 logo após a queda.
+  - **Health checks:** ativo a cada 5 s (`/health/ready`) e passivo por taxa de falhas de transporte (janela de 10 s, reativação em 15 s).
+  - **Rate limiting:** token bucket **por tenant** com a vazão do plano (claim `plano`) e janela fixa **por IP** nas rotas públicas (cadastro: 10/min; catálogo: 120/min). O limite adicional por usuário ficou como evolução: o limite por tenant já atende o RNF-04 ([segurança](../seguranca.md#5-riscos-residuais-e-evolução)).
+  - **Autorização por rota:** `POST /api/v1/tenants` e `GET /api/v1/planos` anônimos; demais rotas exigem token válido; os serviços validam o token de novo.
+  - **Headers encaminhados:** as APIs honram `X-Forwarded-Host/Proto`, para que `Location` e links usem o endereço público do gateway.
+  - **Endurecimento HTTP:** headers de segurança, CORS restrito à SPA, limite de 1 MB no corpo, sem header `Server`.
+
 ## Referências
 - [YARP — Yet Another Reverse Proxy](https://github.com/dotnet/yarp)
 - Microsoft — *Gateway Routing / Gateway Offloading patterns*
