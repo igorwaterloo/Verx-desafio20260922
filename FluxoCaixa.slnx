@@ -36,6 +36,7 @@
     <Project Path="tests/Consolidado.IntegrationTests/Consolidado.IntegrationTests.csproj" />
     <Project Path="tests/FluxoCaixa.Application.Common.UnitTests/FluxoCaixa.Application.Common.UnitTests.csproj" />
     <Project Path="tests/FluxoCaixa.Contracts.UnitTests/FluxoCaixa.Contracts.UnitTests.csproj" />
+    <Project Path="tests/FluxoCaixa.Gateway.Tests/FluxoCaixa.Gateway.Tests.csproj" />
     <Project Path="tests/FluxoCaixa.Infrastructure.Common.UnitTests/FluxoCaixa.Infrastructure.Common.UnitTests.csproj" />
     <Project Path="tests/FluxoCaixa.SharedKernel.UnitTests/FluxoCaixa.SharedKernel.UnitTests.csproj" />
     <Project Path="tests/Lancamentos.Application.UnitTests/Lancamentos.Application.UnitTests.csproj" />
