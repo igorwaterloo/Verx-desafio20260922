@@ -20,6 +20,7 @@
 |---|---|
 | [Requisitos não funcionais](requisitos-nao-funcionais.md) | SLOs, métricas, capacidade, RPO/RTO, requisitos de SaaS (isolamento, noisy neighbor, LGPD) |
 | [ADRs](adr/README.md) | Registro de decisões arquiteturais |
+| [Segurança](seguranca.md) | Superfície exposta, ameaças (STRIDE), controles, evidências e riscos residuais |
 
 ## Qualidade e evolução
 

@@ -97,6 +97,42 @@ services:
   # Serviços da aplicação
   # ---------------------------------------------------------------------------
 
+  # Entrada única da aplicação (ADR-0009): a SPA e os clientes externos falam só com o gateway.
+  gateway:
+    <<: *restart
+    image: fluxo-caixa/gateway:dev
+    build:
+      context: ..
+      dockerfile: src/api/Dockerfile
+      args:
+        PROJETO: src/api/Gateway/FluxoCaixa.Gateway/FluxoCaixa.Gateway.csproj
+        ASSEMBLY: FluxoCaixa.Gateway
+    environment:
+      # "Docker" (e não Development): os destinos vêm do appsettings.json, com os nomes dos serviços.
+      ASPNETCORE_ENVIRONMENT: Docker
+      Autenticacao__Authority: http://keycloak:8080/realms/fluxo-caixa
+      Autenticacao__EmissorValido: http://localhost:8081/realms/fluxo-caixa
+      Autenticacao__RequireHttpsMetadata: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      tenants-api:
+        condition: service_started
+      lancamentos-api:
+        condition: service_started
+      consolidado-api-1:
+        condition: service_started
+      consolidado-api-2:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r status <&3 && case \"$$status\" in *' 200 '*) exit 0;; *) exit 1;; esac"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   lancamentos-api:
     <<: *restart
     image: fluxo-caixa/lancamentos-api:dev

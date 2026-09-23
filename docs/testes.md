@@ -59,6 +59,8 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Tenants — aplicação | 17 | Saga de onboarding (compensação, retomada, 503), troca de plano, limite de usuários, expiração |
 | Tenants — integração | 9 | **Keycloak real**: admin criado faz login com as claims do tenant; compensação; Keycloak pausado → 503 → reenvio conclui; plano refletido no token |
 
+| Gateway | 14 | Roteamento, JWT (401), rotas públicas, **rate limit por tenant sem afetar outro tenant**, limite por IP, balanceamento, **failover com retentativa em outra réplica**, headers, CORS, 413 |
+
 ### Cenários de integração de Lançamentos
 
 | Cenário | Resultado esperado |
@@ -106,6 +108,15 @@ As regras de negócio seguem **vermelho → verde → refatorar**: o teste que d
 | Consolidado religado | Backlog processado; saldo convergiu com os 10 lançamentos |
 | Empresa nova por autoatendimento | 201 `Ativo` → login do admin com as claims do tenant → lançamento 201 → saldo no Consolidado |
 | Upgrade Free → Pro | Novo token com `plano=pro` e projeção do plano no LancamentosDb atualizada por evento (limite 50.000) |
+
+### Verificação do gateway no compose
+
+| Verificação | Resultado |
+|---|---|
+| Rotas protegidas sem token | 401 no gateway |
+| Cadastro → login → lançamento → consolidado, tudo pela porta 8080 | 201 / 201 / saldo atualizado; `Location` com o endereço público |
+| Rajada de 60 requisições simultâneas por tenant | Padaria (Free, 20 req/s): 20×200 e 40×429 · Mercado (Pro, 100 req/s): 60×200 |
+| `consolidado-api-1` parado logo após a rajada | 12 de 12 consultas com 200 (retentativa na réplica 2) |
 
 ## Resultados de carga
 

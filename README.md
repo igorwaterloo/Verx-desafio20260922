@@ -13,6 +13,7 @@ Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa 
 - [API de Tenants (Plataforma)](#api-de-tenants-plataforma)
 - [API de Lançamentos](#api-de-lançamentos)
 - [API de Consolidado](#api-de-consolidado)
+- [Segurança](#segurança)
 - [Testes](#testes)
 - [Documentação](#documentação)
 - [Roadmap](#roadmap)
@@ -160,16 +161,17 @@ O mesmo `docker compose up -d` (a partir de `deploy/`) compila as imagens e sobe
 
 | Serviço | Endereço | Documentação da API |
 |---|---|---|
-| Tenants.Api | http://localhost:5301 | http://localhost:5301/scalar |
-| Lancamentos.Api | http://localhost:5101 | http://localhost:5101/scalar |
-| Consolidado.Api (réplicas 1 e 2) | http://localhost:5201 · http://localhost:5202 | http://localhost:5201/scalar |
+| **API Gateway (entrada da aplicação)** | **http://localhost:8080** | — |
+| Tenants.Api (depuração) | http://localhost:5301 | http://localhost:5301/scalar |
+| Lancamentos.Api (depuração) | http://localhost:5101 | http://localhost:5101/scalar |
+| Consolidado.Api, réplicas 1 e 2 (depuração) | http://localhost:5201 · http://localhost:5202 | http://localhost:5201/scalar |
 | Consolidado.Worker | — (interno) | — |
 
 Cada API expõe `/health/live`, `/health/ready` e, em desenvolvimento, o OpenAPI em `/openapi/v1.json` e a UI **Scalar** em `/scalar`. As migrations são aplicadas na inicialização.
 
 Para executar fora do container (com a infraestrutura do passo 1 no ar): `dotnet run --project src/api/Lancamentos/Lancamentos.Api`.
 
-> O Gateway (que passa a ser a entrada única e balanceia as réplicas do Consolidado) e o frontend entram no compose nas próximas fases.
+> **Use o gateway (8080)**: ele valida o token, aplica o rate limit do plano e balanceia as réplicas do Consolidado. As portas diretas dos serviços existem apenas para depuração. O frontend entra no compose na Fase 7.
 
 ## API de Tenants (Plataforma)
 
@@ -185,7 +187,7 @@ Cadastro da empresa em autoatendimento, planos e usuários. O cadastro cria a **
 | `POST /api/v1/tenants/atual/usuarios` | admin | 201; 409 (e-mail em uso); 422 (limite de usuários do plano) |
 
 ```bash
-curl -X POST http://localhost:5301/api/v1/tenants -H "Content-Type: application/json" -d '{
+curl -X POST http://localhost:8080/api/v1/tenants -H "Content-Type: application/json" -d '{
   "razaoSocial": "Acougue Boa Carne Ltda", "nomeFantasia": "Acougue Boa Carne",
   "cnpj": "11.222.333/0001-81", "plano": "free",
   "administrador": { "nome": "Ana Souza", "email": "ana@acougue.dev", "senha": "Senha@123" }
@@ -210,7 +212,7 @@ TOKEN=$(curl -s -X POST http://localhost:8081/realms/fluxo-caixa/protocol/openid
   -d grant_type=password -d client_id=fluxo-caixa-testes \
   -d username=operador.mercado -d 'password=Senha@123' | jq -r .access_token)
 
-curl -X POST http://localhost:5101/api/v1/lancamentos \
+curl -X POST http://localhost:8080/api/v1/lancamentos \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{"tipo":"Credito","valor":1500.50,"dataCompetencia":"2026-09-22","descricao":"Vendas do dia"}'
@@ -228,11 +230,20 @@ Saldo diário consolidado do tenant, atualizado pelo `Consolidado.Worker` a part
 | `GET /api/v1/consolidado?inicio=AAAA-MM-DD&fim=AAAA-MM-DD` | operador | 200 com todos os dias e os totais; 400 se o período for inválido ou maior que 93 dias |
 
 ```bash
-curl http://localhost:5201/api/v1/consolidado/2026-09-22 -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8080/api/v1/consolidado/2026-09-22 -H "Authorization: Bearer $TOKEN"
 # {"data":"2026-09-22","totalCreditos":1000.00,"totalDebitos":250.00,"saldo":750.00,"quantidadeLancamentos":2}
 ```
 
 **Demonstração do RNF-01:** `docker compose stop consolidado-api-1 consolidado-api-2 consolidado-worker` → os lançamentos continuam retornando 201 → `docker compose start consolidado-worker consolidado-api-1 consolidado-api-2` → o saldo converge com todos os lançamentos feitos durante a queda.
+
+## Segurança
+
+- **Entrada única** pelo gateway: JWT do Keycloak validado no gateway e em cada serviço; rotas públicas só para cadastro e catálogo de planos.
+- **Rate limiting por tenant**, conforme o plano (Free 20 req/s, Pro 100 req/s): um tenant que excede recebe 429 sem afetar os demais; rotas públicas limitadas por IP.
+- **Isolamento entre tenants** em várias camadas (token, filtro global do EF Core, cache, 404 para dados de outro tenant), coberto por testes.
+- Headers de segurança, CORS restrito à SPA, limite de corpo, segredos fora do repositório.
+
+Ameaças, controles, evidências e riscos residuais: [docs/seguranca.md](docs/seguranca.md).
 
 ## Testes
 
@@ -264,6 +275,7 @@ Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (er
 | `Tenants.Domain.UnitTests` | CNPJ, catálogo de planos, agregado `Tenant` (ciclo de vida, RP-05) |
 | `Tenants.Application.UnitTests` | Onboarding como saga (compensação, retomada, 503), plano, usuários, expiração |
 | `Tenants.IntegrationTests` | Onboarding e gestão com **Keycloak real**: login do admin criado, compensação, Keycloak fora do ar |
+| `FluxoCaixa.Gateway.Tests` | Roteamento, JWT, rotas públicas, rate limit por tenant/plano e por IP, balanceamento, failover com retentativa, headers de segurança, CORS |
 | `Lancamentos.IntegrationTests` | API de ponta a ponta com SQL Server e RabbitMQ reais (Testcontainers): outbox, isolamento entre tenants, quota via evento e **registro com o RabbitMQ fora do ar** |
 
 Estratégia completa: [docs/testes.md](docs/testes.md).
@@ -281,7 +293,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 4 — Serviço de Lançamentos (controllers, quota, isolamento)
 - [x] Fase 5 — Serviço de Consolidado
 - [x] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
-- [ ] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
+- [x] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
 - [ ] Fase 7 — Frontend Angular (inclui cadastro da empresa e gestão de usuários)
 - [ ] Fase 8 — Testes de stress e resiliência (inclui noisy neighbor)
 - [ ] Fase 9 — Observabilidade e CI

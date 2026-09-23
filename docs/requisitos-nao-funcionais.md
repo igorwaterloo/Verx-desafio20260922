@@ -93,7 +93,7 @@ Metas **mensuráveis** para cada requisito não funcional, com a forma de mediç
 | SEG-08 | Conta de serviço do Tenants.Api no Keycloak com **permissões mínimas** (gerenciar organizações e usuários do realm). |
 | SEG-09 | Isolamento de tenant em profundidade: filtro global do EF Core, interceptor de gravação, chaves de cache por tenant, testes de isolamento ([ADR-0015](adr/0015-multi-tenancy-banco-compartilhado.md)). |
 
-Detalhamento de ameaças e controles: `seguranca.md` (Fase 6).
+Detalhamento de ameaças, controles e riscos residuais: [segurança](seguranca.md).
 
 ## 8. Observabilidade
 
