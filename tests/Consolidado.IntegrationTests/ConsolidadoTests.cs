@@ -59,6 +59,28 @@ public sealed class ConsolidadoTests(AmbienteDeTeste ambiente)
     }
 
     [Fact]
+    public async Task RajadaNoMesmoDia_EhAplicadaInteiraEmPoucosSegundos()
+    {
+        // Caso real de pico: todos os lançamentos do comerciante caem na mesma linha (tenant + dia).
+        // Consumidores concorrentes na mesma linha geravam conflitos de concorrência otimista, que iam
+        // para o retry exponencial (atraso de segundos e risco de DLQ). O particionamento por
+        // tenant + data aplica essas mensagens em série, sem conflitos.
+        const int Quantidade = 300;
+        var tenant = Guid.NewGuid();
+        using var cliente = ambiente.Api.ClienteDo(tenant);
+
+        var cronometro = Stopwatch.StartNew();
+        await Task.WhenAll(Enumerable.Range(0, Quantidade)
+            .Select(_ => PublicarAsync(tenant, TipoLancamento.Credito, 1m)));
+
+        var saldo = await AguardarSaldoAsync(cliente, Hoje, s => s.QuantidadeLancamentos == Quantidade);
+        cronometro.Stop();
+
+        saldo.TotalCreditos.ShouldBe(Quantidade);
+        cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(8), "a rajada deve convergir sem esperar retentativas");
+    }
+
+    [Fact]
     public async Task EstornoDeCredito_AnulaOEfeitoNoSaldo()
     {
         var tenant = Guid.NewGuid();
