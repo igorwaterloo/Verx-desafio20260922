@@ -35,10 +35,37 @@ Uma falha nesses testes **bloqueia o merge e o deploy**.
 ## Como os testes são executados
 
 - **Runner:** Microsoft Testing Platform (MTP), habilitado em `global.json`. Comando: `dotnet test`.
-- **Cobertura:** `Microsoft.Testing.Extensions.CodeCoverage` (`dotnet test -- --coverage`).
+- **Cobertura:** `Microsoft.Testing.Extensions.CodeCoverage` (`dotnet test --coverage`).
 - **Em container:** `scripts/test.ps1` (Windows) ou `scripts/test.sh` (Linux/macOS) executam build e testes no `mcr.microsoft.com/dotnet/sdk:10.0`, sem exigir o SDK .NET na máquina. É o mesmo ambiente do CI.
 - **Frontend:** `npx ng test --watch=false` em `src/app/fluxo-caixa-web` (49 testes).
 - **E2E:** `scripts/test-e2e.ps1` / `scripts/test-e2e.sh`, com a stack do compose no ar. A imagem `mcr.microsoft.com/playwright` usa a rede do host para acessar a SPA (:4200), o gateway (:8080) e o Keycloak (:8081) pelos mesmos endereços do navegador. Cada execução cadastra uma empresa nova com CNPJ gerado.
+
+## Integração contínua (GitHub Actions)
+
+| Workflow | Quando | O que faz |
+|---|---|---|
+| [`ci.yml`](../.github/workflows/ci.yml) | push no `main`, pull requests, manual | **Backend:** restore, build Release (warnings como erro), testes com Testcontainers no Docker do runner e cobertura (relatório no resumo da execução + HTML como artefato). **Frontend:** `npm ci`, Vitest e build de produção. **Imagens:** build das 6 imagens (sem push), com cache |
+| [`e2e.yml`](../.github/workflows/e2e.yml) | manual | Sobe a stack do compose no runner, roda o smoke E2E (Playwright) e uma rodada curta do k6 (consolidado, noisy neighbor, lançamentos); publica os resultados como artefato |
+| [`dependabot.yml`](../.github/dependabot.yml) | semanal | PRs agrupados para NuGet, npm, GitHub Actions e imagens Docker; MassTransit fica na linha 8.x (a 9 é comercial — ADR-0013) |
+
+Localmente, a mesma cobertura:
+
+```bash
+dotnet test --solution FluxoCaixa.slnx -c Release --coverage --coverage-output-format cobertura --results-directory resultados
+dotnet tool restore && dotnet reportgenerator -reports:"resultados/**/*.cobertura.xml" -targetdir:cobertura -assemblyfilters:"-*Tests*" -classfilters:"-Microsoft.AspNetCore.OpenApi.Generated*;-System.Runtime.CompilerServices*"
+```
+
+**Cobertura medida** (2026-09-23, 259 testes, Release; código gerado pelo gerador de OpenAPI excluído do relatório):
+
+| Linhas | Branches | Métodos |
+|---|---|---|
+| **93,1%** | **79,2%** | **92,8%** |
+
+- **Domínio e Application:** 90% a 100% em todos os serviços.
+- **APIs** (controllers e `Program`) e **gateway:** 96% a 100%.
+- **`Consolidado.Worker`:** 0%. O assembly só contém o `Program.cs`; o teste de integração monta o mesmo host com as mesmas extensões (`AddConsolidado*`).
+
+> Numa máquina com 16 GB, pare a stack do compose antes da suíte completa: os containers dos testes (SQL Server, RabbitMQ, Redis, Keycloak) somados aos da stack esgotam a memória da VM do Docker.
 
 ## TDD
 

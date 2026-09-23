@@ -1,5 +1,7 @@
 # Verx — Desafio Arquiteto de Software: Fluxo de Caixa Diário (SaaS)
 
+[![CI](https://github.com/igorwaterloo/Verx-desafio20260922/actions/workflows/ci.yml/badge.svg)](https://github.com/igorwaterloo/Verx-desafio20260922/actions/workflows/ci.yml)
+
 Plataforma **SaaS multi-tenant** para comerciantes controlarem o fluxo de caixa diário: **lançamentos** (débitos e créditos) e **relatório de saldo diário consolidado**. Cada empresa é um tenant, com seus usuários, seu plano e seus dados isolados.
 
 > 🚧 Em construção. Este README é atualizado a cada entrega. Veja o andamento em [Roadmap](#roadmap).
@@ -263,6 +265,15 @@ curl http://localhost:8080/api/v1/consolidado/2026-09-22 -H "Authorization: Bear
 
 **Demonstração do RNF-01:** `docker compose stop consolidado-api-1 consolidado-api-2 consolidado-worker` → os lançamentos continuam retornando 201 → `docker compose start consolidado-worker consolidado-api-1 consolidado-api-2` → o saldo converge com todos os lançamentos feitos durante a queda.
 
+## Observabilidade
+
+Todos os serviços enviam traces, métricas e logs (OpenTelemetry/OTLP) para o **Aspire Dashboard** em http://localhost:18888:
+- **Traces:** um único trace segue um lançamento do gateway até o saldo, atravessando o RabbitMQ.
+- **Métricas de negócio:** por exemplo, `consolidado.atraso` mede o SLO-07 em produção.
+- **Tenant:** `tenant.id` aparece nos spans e nos logs.
+
+Detalhes e passo a passo em [docs/observabilidade.md](docs/observabilidade.md).
+
 ## Segurança
 
 - **Entrada única** pelo gateway: JWT do Keycloak validado no gateway e em cada serviço; rotas públicas só para cadastro e catálogo de planos.
@@ -276,7 +287,7 @@ Ameaças, controles, evidências e riscos residuais: [docs/seguranca.md](docs/se
 
 ```bash
 dotnet test                    # usa o Microsoft Testing Platform (global.json)
-dotnet test -- --coverage      # com cobertura
+dotnet test --coverage         # com cobertura (relatório: docs/testes.md)
 ```
 
 Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (erro `0x800711C7`, *Smart App Control*) — rode tudo em container:
@@ -341,6 +352,8 @@ cd src/app/fluxo-caixa-web && npm ci && npx ng test --watch=false
 
 Os testes de carga encontraram e ajudaram a corrigir dois defeitos (detalhes em [docs/testes.md](docs/testes.md#resultados-dos-testes-de-carga-fase-8)).
 
+Cobertura do backend: **93,1% das linhas** e 79,2% dos branches (domínio e Application entre 90% e 100%), publicada a cada execução do CI.
+
 Estratégia completa: [docs/testes.md](docs/testes.md).
 
 ## Documentação
@@ -359,7 +372,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
 - [x] Fase 7 — Frontend Angular (cadastro da empresa, lançamentos, consolidado, gestão de plano e usuários)
 - [x] Fase 8 — Testes de carga e resiliência com k6 (inclui noisy neighbor e caos)
-- [ ] Fase 9 — Observabilidade e CI
+- [x] Fase 9 — Observabilidade (OpenTelemetry + Aspire) e CI (GitHub Actions)
 - [ ] Fase 10 — Documentação final
 
 ## Contribuição

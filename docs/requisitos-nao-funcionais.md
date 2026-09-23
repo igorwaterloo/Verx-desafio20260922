@@ -112,18 +112,20 @@ Detalhamento de ameaças, controles e riscos residuais: [segurança](seguranca.m
 
 ## 8. Observabilidade
 
+Implementação, métricas e passo a passo no Aspire: [observabilidade.md](observabilidade.md).
+
 | Sinal | Ferramenta | Exemplos |
 |---|---|---|
 | **Traces** distribuídos | OpenTelemetry → Aspire Dashboard | Um único trace do POST de lançamento até a atualização do saldo, com o contexto propagado pelo RabbitMQ. |
-| **Métricas** | OpenTelemetry (Meter) | RPS, latência p95/p99, taxa de erro, cache hit ratio, profundidade da fila e da DLQ, `consolidado.lag`, uso de quota e 429 **por tenant/plano**, `tenants.pendentes`. |
-| **Logs** estruturados | Serilog → OTLP | Correlacionados por `TraceId`. |
+| **Métricas** | OpenTelemetry (`System.Diagnostics.Metrics`) | RPS, latência p95/p99 e erros (ASP.NET Core), `consolidado.atraso` (SLO-07), `consolidado.cache.leituras` (taxa de acerto), `lancamentos.registrados`, `lancamentos.quota_excedida` e `gateway.limite_excedido` **por plano** (sem tenant: cardinalidade). Filas e DLQ: métricas do RabbitMQ. |
+| **Logs** estruturados | `ILogger` → OTLP | Correlacionados por `TraceId`, com `tenant.id`. |
 | **Health checks** | ASP.NET Core HealthChecks | `/health/live` (processo) e `/health/ready` (dependências). |
 
 **Alertas propostos (produção):**
 - Taxa de erro > 1% por 5 min.
 - p95 do Consolidado > 200 ms.
 - Profundidade da DLQ > 0.
-- `consolidado.lag` p95 > 30 s.
+- `consolidado.atraso` p95 > 5 s (SLO-07).
 - Réplicas saudáveis < 2.
 - Tenants em `Pendente` há mais de 10 min.
 - Qualquer falha nos testes de isolamento no pipeline **bloqueia o deploy**.

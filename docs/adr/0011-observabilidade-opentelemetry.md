@@ -1,6 +1,6 @@
 # ADR-0011: Observabilidade com OpenTelemetry
 
-- **Status:** Aceita
+- **Status:** Aceita — atualizada em 2026-09-23 (ver Atualizações)
 - **Data:** 2026-09-22
 - **Decisores:** Igor Waterloo
 - **Relacionadas:** [ADR-0002](0002-microsservicos-por-bounded-context.md), [requisitos não funcionais — observabilidade](../requisitos-nao-funcionais.md#8-observabilidade)
@@ -53,6 +53,29 @@ Com múltiplos serviços, um broker e processamento assíncrono, entender **por 
 ### Mitigações
 - Sampling em produção (ex.: parent-based, 10%, e 100% em erros).
 - Os alertas propostos ficam documentados nos requisitos não funcionais para configuração no backend de produção.
+
+## Atualizações
+
+- **2026-09-23 — Implementação (Fase 9).** Guia de uso em [observabilidade.md](../observabilidade.md).
+  - **Configuração comum:** `AddObservabilidade` no `Infrastructure.Common`, usado pelos cinco executáveis. A exportação OTLP só é ligada quando `OTEL_EXPORTER_OTLP_ENDPOINT` está definido.
+  - **Sem Serilog:** o `ILogger` exporta direto pelo OpenTelemetry (logs estruturados, com `TraceId` e escopos). Serilog não acrescentaria nada, já que o destino é o mesmo OTLP; é uma dependência a menos.
+  - **Somente instrumentações estáveis (1.19):**
+    - EF Core e Redis ainda são *beta*. O SqlClient cobre todas as consultas do EF Core.
+    - O Redis é medido pela métrica `consolidado.cache.leituras` (acerto, falta, indisponível).
+    - MassTransit emite traces e métricas nativos.
+  - **Nomes finais das métricas de negócio:**
+    - `lancamentos.registrados` e `lancamentos.quota_excedida`;
+    - `consolidado.atraso` (antes chamado `consolidado.lag`), histograma do SLO-07;
+    - `consolidado.eventos`, `consolidado.cache.leituras` e `consolidado.retentativas`;
+    - `gateway.limite_excedido`.
+
+    A profundidade do outbox e das filas fica com o RabbitMQ (plugin Prometheus), não com a aplicação.
+  - **Cardinalidade:** `tenant.id` vai nos spans e nos logs, **nunca** nas métricas, que usam o plano.
+  - **Amostragem:**
+    - Parent-based: um trace só começa em operação de entrada (Server, Consumer, Producer).
+    - Descarta a atividade de fundo que dominava o painel: varredura do outbox e do inbox no SQL a cada segundo e sondas de health check do gateway.
+    - A fonte do YARP não é assinada: ela só gerava o span das sondas.
+  - **Verificado no compose:** um único trace liga gateway → Lançamentos → outbox → RabbitMQ → worker → SQL (imagem em [observabilidade.md](../observabilidade.md)). Teste de integração: o consumo continua o trace da publicação e carrega o `tenant.id`.
 
 ## Referências
 - [OpenTelemetry](https://opentelemetry.io/)
