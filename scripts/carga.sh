@@ -9,7 +9,14 @@
 #   ./scripts/carga.sh noisy-neighbor -e DURACAO=1m
 set -eu
 
-RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+# No Git Bash (Windows) usa o caminho do Windows e desliga a conversão automática de caminhos:
+# caminhos como /tmp/... ou /c/... e opções como "-w /src" não chegam ao Docker como esperado.
+if pwd -W >/dev/null 2>&1; then
+  export MSYS_NO_PATHCONV=1
+  RAIZ="$(cd "$(dirname "$0")/.." && pwd -W)"
+else
+  RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+fi
 TESTE="${1:?informe o teste: consolidado-50rps | lancamentos-carga | noisy-neighbor | caos-lancamentos}"
 shift
 
