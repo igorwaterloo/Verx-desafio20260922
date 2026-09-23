@@ -117,7 +117,7 @@ Separar as camadas em projetos faz o **compilador** impedir dependências proibi
 ### Pré-requisitos
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (com WSL2 no Windows) — **obrigatório**
 - [.NET SDK 10.0.400+](https://dotnet.microsoft.com/download) — opcional: build e testes também rodam em container (ver [Testes](#testes))
-- [Node.js LTS](https://nodejs.org/) (24+) — para o frontend (Fase 7)
+- [Node.js LTS](https://nodejs.org/) (24+) — opcional: só para desenvolver o frontend fora do container
 
 ### 1. Subir a infraestrutura
 
@@ -161,7 +161,8 @@ O mesmo `docker compose up -d` (a partir de `deploy/`) compila as imagens e sobe
 
 | Serviço | Endereço | Documentação da API |
 |---|---|---|
-| **API Gateway (entrada da aplicação)** | **http://localhost:8080** | — |
+| **Aplicação web (SPA)** | **http://localhost:4200** | — |
+| **API Gateway (entrada das APIs)** | **http://localhost:8080** | — |
 | Tenants.Api (depuração) | http://localhost:5301 | http://localhost:5301/scalar |
 | Lancamentos.Api (depuração) | http://localhost:5101 | http://localhost:5101/scalar |
 | Consolidado.Api, réplicas 1 e 2 (depuração) | http://localhost:5201 · http://localhost:5202 | http://localhost:5201/scalar |
@@ -171,7 +172,33 @@ Cada API expõe `/health/live`, `/health/ready` e, em desenvolvimento, o OpenAPI
 
 Para executar fora do container (com a infraestrutura do passo 1 no ar): `dotnet run --project src/api/Lancamentos/Lancamentos.Api`.
 
-> **Use o gateway (8080)**: ele valida o token, aplica o rate limit do plano e balanceia as réplicas do Consolidado. As portas diretas dos serviços existem apenas para depuração. O frontend entra no compose na Fase 7.
+> **Use o gateway (8080)**: ele valida o token, aplica o rate limit do plano e balanceia as réplicas do Consolidado. As portas diretas dos serviços existem apenas para depuração. A SPA chama as APIs sempre pelo gateway.
+
+## Aplicação web
+
+Abra **http://localhost:4200**:
+
+1. **Cadastrar minha empresa**: razão social, CNPJ, plano e o administrador. Ou use um usuário de demonstração.
+2. **Entrar**: login no Keycloak (Authorization Code + PKCE). Nenhuma senha passa pela SPA.
+3. **Lançamentos**:
+   - registre créditos e débitos e consulte os lançamentos de um dia;
+   - o **estorno** aparece só para admin;
+   - o reenvio após uma falha reutiliza a mesma `Idempotency-Key`, então não há lançamento duplicado.
+4. **Consolidado**:
+   - mostra o saldo do dia, os totais do período (até 93 dias), o gráfico de créditos, débitos e saldo, e a tabela dos dias com movimento;
+   - com o serviço fora do ar, um aviso informa que os lançamentos continuam sendo aceitos.
+5. **Minha empresa** (admin): dados da empresa, troca de plano (o token é renovado com o novo plano) e usuários, respeitando o limite do plano.
+
+A imagem da SPA é única para todos os ambientes: o `config.json` (URL do gateway e do Keycloak) e a Content-Security-Policy são gerados na inicialização a partir de `API_URL`, `OIDC_AUTHORITY` e `OIDC_CLIENT_ID` ([ADR-0018](docs/adr/0018-frontend-angular-spa.md)).
+
+Para desenvolver o frontend com recarga automática (com a stack no ar):
+
+```bash
+docker compose -f deploy/docker-compose.yml stop web   # libera a porta 4200
+cd src/app/fluxo-caixa-web
+npm ci
+npx ng serve                                           # http://localhost:4200
+```
 
 ## API de Tenants (Plataforma)
 
@@ -278,6 +305,24 @@ Sem o SDK .NET instalado — ou se o Windows bloquear DLLs recém-compiladas (er
 | `FluxoCaixa.Gateway.Tests` | Roteamento, JWT, rotas públicas, rate limit por tenant/plano e por IP, balanceamento, failover com retentativa, headers de segurança, CORS |
 | `Lancamentos.IntegrationTests` | API de ponta a ponta com SQL Server e RabbitMQ reais (Testcontainers): outbox, isolamento entre tenants, quota via evento e **registro com o RabbitMQ fora do ar** |
 
+**Frontend** (Vitest):
+
+```bash
+cd src/app/fluxo-caixa-web && npm ci && npx ng test --watch=false
+```
+
+**Smoke E2E** (Playwright em container, contra a stack do compose no ar). O teste cadastra uma empresa nova, faz login no Keycloak, registra um crédito e um débito e espera o saldo consolidado convergir:
+
+```powershell
+./scripts/test-e2e.ps1                               # Windows
+./scripts/test-e2e.sh                                # Linux / macOS
+```
+
+| Frontend | Cobre |
+|---|---|
+| Unitários (Vitest) | Validadores (CNPJ, senha, datas), conversão de erros ProblemDetails/429/503, clientes das APIs (`Idempotency-Key`), guards por papel, cadastro pendente (503), idempotência no reenvio, banner de consolidado indisponível |
+| E2E (Playwright) | Cadastro → login OIDC → lançamentos → saldo consolidado, com a CSP de produção ativa |
+
 Estratégia completa: [docs/testes.md](docs/testes.md).
 
 ## Documentação
@@ -294,7 +339,7 @@ Estratégia completa: [docs/testes.md](docs/testes.md).
 - [x] Fase 5 — Serviço de Consolidado
 - [x] Fase 5.5 — Serviço de Tenants (onboarding, planos, usuários)
 - [x] Fase 6 — Gateway e segurança (rate limit por tenant/plano)
-- [ ] Fase 7 — Frontend Angular (inclui cadastro da empresa e gestão de usuários)
+- [x] Fase 7 — Frontend Angular (cadastro da empresa, lançamentos, consolidado, gestão de plano e usuários)
 - [ ] Fase 8 — Testes de stress e resiliência (inclui noisy neighbor)
 - [ ] Fase 9 — Observabilidade e CI
 - [ ] Fase 10 — Documentação final

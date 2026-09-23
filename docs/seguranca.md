@@ -45,6 +45,19 @@ flowchart LR
 | CORS | somente a origem da SPA (`http://localhost:4200` localmente); cabeçalhos `Authorization`, `Content-Type`, `Idempotency-Key` |
 | Corpo da requisição | máximo 1 MB (413 antes de encaminhar) |
 
+### SPA (nginx)
+
+Detalhes em [ADR-0018](adr/0018-frontend-angular-spa.md).
+
+| Controle | Valor |
+|---|---|
+| Autenticação | Authorization Code + **PKCE** com client público: nenhum segredo nem senha passa pela SPA |
+| Envio do token | O Bearer só é anexado às URLs do gateway (`secureRoutes`) |
+| `Content-Security-Policy` | `script-src 'self'` (sem scripts inline); `connect-src` limitado ao gateway e ao Keycloak; `frame-ancestors 'none'`; `object-src 'none'`; `base-uri 'self'`. As origens vêm das variáveis de ambiente |
+| Demais cabeçalhos | `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` |
+| Fontes e ícones | Servidos pela própria aplicação (sem CDN de terceiros) |
+| Container | nginx sem privilégios (usuário 101), `server_tokens off` |
+
 ## 4. Como os controles foram verificados
 
 | Controle | Evidência |
@@ -57,6 +70,8 @@ flowchart LR
 | Isolamento entre tenants (404, listagem, estorno, consolidado, cache) | `Lancamentos.IntegrationTests`, `Consolidado.IntegrationTests`, `FluxoCaixa.Infrastructure.Common.UnitTests` |
 | Papéis (operador não estorna nem troca plano) | Testes de integração de Lançamentos e Tenants |
 | Claims corretas no token real do Keycloak | `Tenants.IntegrationTests` (Keycloak real) |
+| CSP da SPA não quebra o login OIDC nem as chamadas à API | Smoke E2E (Playwright) contra a imagem de produção |
+| Operador não vê estorno nem "Minha empresa" | Testes unitários da SPA (`adminGuard`, página de lançamentos) |
 
 ## 5. Riscos residuais e evolução
 
@@ -73,3 +88,5 @@ flowchart LR
 | Consultas SQL fora do EF (ex.: relatórios futuros) escapariam do filtro de tenant | Não há hoje | Row-Level Security com `SESSION_CONTEXT('TenantId')` |
 | Varredura automatizada | Não há | SAST/DAST, varredura de dependências e de imagens no pipeline (Fase 9 / evolução) |
 | MFA | Não exigido | MFA obrigatório para o papel `admin` (política do Keycloak) |
+| Tokens no `sessionStorage` da SPA | Mitigado por CSP estrita e tokens de vida curta | BFF com tokens só no servidor, se o perfil de risco exigir |
+| `style-src 'unsafe-inline'` na SPA | Exigido pelos estilos de componentes do Angular | Nonce de CSP (`ngCspNonce`) |

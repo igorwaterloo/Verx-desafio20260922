@@ -157,7 +157,7 @@ workspace "Fluxo de Caixa Diário (SaaS)" "Plataforma SaaS multi-tenant para con
         local = deploymentEnvironment "Local (Docker Compose)" {
             deploymentNode "Estação do desenvolvedor" "" "Windows / macOS / Linux + Docker Desktop" {
                 deploymentNode "Docker Compose" "" "rede bridge fluxo-caixa" {
-                    deploymentNode "web" "Serve os arquivos estáticos da SPA" "nginx:alpine" {
+                    deploymentNode "web" "Serve os arquivos estáticos da SPA" "nginx-unprivileged (alpine)" {
                         containerInstance fluxoCaixa.spa
                     }
                     deploymentNode "keycloak" "" "quay.io/keycloak/keycloak:26.7.4" {

@@ -1,59 +1,42 @@
-# FluxoCaixaWeb
+# Fluxo de Caixa — Web App (Angular)
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.8.
+SPA do produto: cadastro da empresa, login OIDC no Keycloak, lançamentos, consolidado e administração do tenant. Decisões em [ADR-0018](../../../docs/adr/0018-frontend-angular-spa.md). O uso da aplicação está descrito no [README da raiz](../../../README.md#aplicação-web).
 
-## Development server
+## Estrutura
 
-To start a local development server, run:
-
-```bash
-ng serve
+```
+src/app/
+├─ core/
+│  ├─ api/        clientes das APIs (via gateway), modelos e conversão de erros (ErroApi)
+│  ├─ auth/       AuthService (claims do token) e guards (autenticado, admin)
+│  ├─ config/     configuração em tempo de execução (/config.json) e locale pt-BR
+│  └─ util/       validadores (CNPJ, senha), datas no fuso de São Paulo, chave de idempotência
+├─ layout/        shell das páginas autenticadas
+├─ shared/        notificações e diálogo de confirmação
+└─ features/
+   ├─ publico/      início e cadastro da empresa
+   ├─ lancamentos/  registro, listagem e estorno
+   ├─ consolidado/  saldo do dia, período e gráfico SVG
+   └─ empresa/      plano e usuários (admin)
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Comandos
 
 ```bash
-ng generate component component-name
+npm ci
+npx ng serve                 # http://localhost:4200 (usa public/config.json)
+npx ng test --watch=false    # testes unitários (Vitest)
+npx ng build                 # build de produção em dist/
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Smoke E2E (Playwright, contra a stack do compose): `scripts/test-e2e.ps1` ou `scripts/test-e2e.sh` na raiz do repositório.
 
-```bash
-ng generate --help
-```
+## Imagem Docker
 
-## Building
+`Dockerfile` (Node → nginx sem privilégios, porta 8080). Variáveis de ambiente:
 
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+| Variável | Padrão |
+|---|---|
+| `API_URL` | `http://localhost:8080` |
+| `OIDC_AUTHORITY` | `http://localhost:8081/realms/fluxo-caixa` |
+| `OIDC_CLIENT_ID` | `fluxo-caixa-web` |
