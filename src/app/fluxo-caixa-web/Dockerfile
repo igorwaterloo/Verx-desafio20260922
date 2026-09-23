@@ -4,7 +4,7 @@
 # O /config.json é gerado na inicialização a partir de variáveis de ambiente, então a mesma
 # imagem serve qualquer ambiente (ADR-0018).
 
-FROM node:24-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci --no-audit --no-fund
