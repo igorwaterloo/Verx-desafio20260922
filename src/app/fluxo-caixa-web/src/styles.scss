@@ -1,1 +1,26 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+// Tema Material 3 (claro/escuro conforme o sistema operacional).
+html {
+  color-scheme: light dark;
+  @include mat.theme((
+    color: mat.$azure-palette,
+    typography: (plain-family: (system-ui, 'Segoe UI', Roboto, sans-serif), brand-family: (system-ui, 'Segoe UI', Roboto, sans-serif)),
+    density: 0,
+  ));
+}
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+// Ícones Material Symbols servidos pela própria aplicação (sem CDN — compatível com a CSP).
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+.notificacao-sucesso { --mat-snack-bar-button-color: #a5d6a7; }
+.notificacao-erro { --mat-snack-bar-button-color: #ef9a9a; }

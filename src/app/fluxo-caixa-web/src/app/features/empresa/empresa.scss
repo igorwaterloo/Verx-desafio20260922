@@ -1,0 +1,15 @@
+:host { display: block; }
+h1 { margin: 0 0 16px; }
+h2 { margin: 32px 0 12px; font-weight: 500; display: flex; align-items: baseline; gap: 12px; }
+.contagem { font-size: 14px; color: var(--mat-sys-on-surface-variant); }
+.bloco { margin: 16px 0; }
+.planos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.plano.atual { border-color: var(--mat-sys-primary); border-width: 2px; }
+.plano ul { margin: 8px 0 0; padding-left: 20px; }
+.selo { display: inline-flex; align-items: center; gap: 4px; color: var(--mat-sys-primary); font-weight: 500; padding: 8px; }
+.tabela { width: 100%; }
+.formulario { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; }
+.formulario mat-form-field { flex: 1; min-width: 200px; }
+.formulario .papel { flex: 0 0 160px; min-width: 160px; }
+.aviso { display: flex; align-items: center; gap: 6px; }
+.erro { display: flex; align-items: center; gap: 8px; color: var(--mat-sys-error); }

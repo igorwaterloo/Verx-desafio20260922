@@ -1,0 +1,102 @@
+<h1>Minha empresa</h1>
+
+@if (carregando() || salvando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+@if (erro(); as mensagem) {
+  <p class="erro" role="alert"><mat-icon>error</mat-icon> {{ mensagem }}</p>
+}
+
+@if (tenant(); as t) {
+  <mat-card appearance="outlined" class="bloco">
+    <mat-card-header>
+      <mat-card-title>{{ t.nomeFantasia ?? t.razaoSocial }}</mat-card-title>
+      <mat-card-subtitle>{{ t.razaoSocial }} · CNPJ {{ t.cnpj }} · cliente desde {{ t.criadoEm | date: 'dd/MM/yyyy' }}</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <h2>Plano</h2>
+  <div class="planos">
+    @for (plano of planos(); track plano.codigo) {
+      <mat-card appearance="outlined" class="plano" [class.atual]="plano.codigo === t.plano.codigo">
+        <mat-card-header>
+          <mat-card-title>{{ plano.nome }}</mat-card-title>
+          <mat-card-subtitle>{{ plano.precoMensal | currency }}/mês</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <ul>
+            <li>{{ plano.limiteLancamentosMes }} lançamentos por mês</li>
+            <li>{{ plano.limiteUsuarios }} usuários</li>
+            <li>{{ plano.requisicoesPorSegundo }} requisições por segundo</li>
+          </ul>
+        </mat-card-content>
+        <mat-card-actions>
+          @if (plano.codigo === t.plano.codigo) {
+            <span class="selo"><mat-icon inline>check</mat-icon> Plano atual</span>
+          } @else {
+            <button mat-stroked-button (click)="alterarPlano(plano)" [disabled]="salvando()">Mudar para {{ plano.nome }}</button>
+          }
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+
+  <h2>Usuários <span class="contagem">{{ usuarios().length }} de {{ t.plano.limiteUsuarios }}</span></h2>
+  <table mat-table [dataSource]="usuarios()" class="tabela">
+    <ng-container matColumnDef="nome">
+      <th mat-header-cell *matHeaderCellDef>Nome</th>
+      <td mat-cell *matCellDef="let u">{{ u.nome }}</td>
+    </ng-container>
+    <ng-container matColumnDef="email">
+      <th mat-header-cell *matHeaderCellDef>E-mail</th>
+      <td mat-cell *matCellDef="let u">{{ u.email }}</td>
+    </ng-container>
+    <ng-container matColumnDef="situacao">
+      <th mat-header-cell *matHeaderCellDef>Situação</th>
+      <td mat-cell *matCellDef="let u">{{ u.habilitado ? 'Ativo' : 'Desabilitado' }}</td>
+    </ng-container>
+    <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+    <tr mat-row *matRowDef="let linha; columns: colunas"></tr>
+  </table>
+
+  <mat-card appearance="outlined" class="bloco">
+    <mat-card-header>
+      <mat-card-title>Adicionar usuário</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (limiteAtingido()) {
+        <p class="aviso" role="status">
+          <mat-icon inline>info</mat-icon>
+          O plano {{ t.plano.nome }} permite até {{ t.plano.limiteUsuarios }} usuários. Mude de plano para adicionar mais.
+        </p>
+      } @else {
+        <form [formGroup]="formulario" (ngSubmit)="adicionarUsuario()" class="formulario">
+          <mat-form-field>
+            <mat-label>Nome</mat-label>
+            <input matInput formControlName="nome" autocomplete="off" />
+            <mat-error>Informe o nome (3 a 100 caracteres).</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>E-mail</mat-label>
+            <input matInput type="email" formControlName="email" autocomplete="off" />
+            <mat-error>E-mail inválido.</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Senha inicial</mat-label>
+            <input matInput type="password" formControlName="senha" autocomplete="new-password" />
+            <mat-error>8 a 128 caracteres, com letras e números.</mat-error>
+          </mat-form-field>
+          <mat-form-field class="papel">
+            <mat-label>Papel</mat-label>
+            <mat-select formControlName="papel">
+              <mat-option value="operador">Operador</mat-option>
+              <mat-option value="admin">Administrador</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-flat-button type="submit" [disabled]="salvando()"><mat-icon>person_add</mat-icon> Adicionar</button>
+        </form>
+      }
+    </mat-card-content>
+  </mat-card>
+}

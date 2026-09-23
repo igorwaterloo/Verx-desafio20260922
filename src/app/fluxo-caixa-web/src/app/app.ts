@@ -1,12 +1,15 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { MatIconRegistry } from '@angular/material/icon';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.scss',
-  templateUrl: './app.html',
+  imports: [RouterOutlet],
+  template: '<router-outlet />',
 })
 export class App {
-  protected readonly title = signal('fluxo-caixa-web');
+  constructor() {
+    // Ícones Material Symbols servidos pela própria aplicação (sem fontes externas — CSP restrita).
+    inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
+  }
 }
