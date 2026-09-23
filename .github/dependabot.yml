@@ -24,6 +24,16 @@ updates:
         patterns: ['@angular/*', '@angular-devkit/*']
       npm:
         patterns: ['*']
+    ignore:
+      # A versão do TypeScript é definida pelo Angular (Angular 22 exige >=6.0 <6.1):
+      # sobe junto com o Angular, via `ng update`.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      # Versões novas do Angular trazem migrações de código: feitas com `ng update`, não por PR automático.
+      - dependency-name: '@angular/*'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@angular-devkit/*'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
@@ -36,3 +46,10 @@ updates:
       - /src/app/fluxo-caixa-web
     schedule:
       interval: weekly
+    ignore:
+      # Node e .NET só em versões LTS: a troca de versão principal é decisão manual
+      # (ex.: Node 26 quando virar LTS), não PR automático para versões "Current".
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+      - dependency-name: dotnet/*
+        update-types: [version-update:semver-major]
