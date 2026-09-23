@@ -1,21 +1,12 @@
-import { registerLocaleData } from '@angular/common';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import localePt from '@angular/common/locales/pt';
-import {
-  ApplicationConfig,
-  DEFAULT_CURRENCY_CODE,
-  LOCALE_ID,
-  provideBrowserGlobalErrorListeners,
-} from '@angular/core';
-import { provideNativeDateAdapter, MAT_DATE_LOCALE } from '@angular/material/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { authInterceptor, provideAuth, withAppInitializerAuthCheck } from 'angular-auth-oidc-client';
 
 import { routes } from './app.routes';
 import { erroApiInterceptor } from './core/api/erro-api';
 import { CONFIGURACAO, Configuracao } from './core/config/configuracao';
-
-registerLocaleData(localePt);
+import { provideLocalizacaoBr } from './core/config/localizacao';
 
 export function criarAppConfig(configuracao: Configuracao): ApplicationConfig {
   return {
@@ -46,10 +37,7 @@ export function criarAppConfig(configuracao: Configuracao): ApplicationConfig {
       ),
       provideHttpClient(withInterceptors([authInterceptor(), erroApiInterceptor])),
 
-      { provide: LOCALE_ID, useValue: 'pt-BR' },
-      { provide: DEFAULT_CURRENCY_CODE, useValue: 'BRL' },
-      provideNativeDateAdapter(),
-      { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' },
+      provideLocalizacaoBr(),
     ],
   };
 }
