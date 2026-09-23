@@ -3,6 +3,7 @@ using FluxoCaixa.SharedKernel;
 using FluxoCaixa.SharedKernel.Cqrs;
 using FluxoCaixa.SharedKernel.Tenancy;
 using Lancamentos.Application.Abstractions;
+using Lancamentos.Application.Telemetria;
 using Lancamentos.Domain.Lancamentos;
 using Lancamentos.Domain.Planos;
 
@@ -49,7 +50,8 @@ public sealed class RegistrarLancamentoHandler(
     IIntegrationEventPublisher publicador,
     IUnitOfWork unitOfWork,
     ITenantContext tenant,
-    TimeProvider tempo) : ICommandHandler<RegistrarLancamentoCommand, LancamentoDto>
+    TimeProvider tempo,
+    LancamentosMetricas metricas) : ICommandHandler<RegistrarLancamentoCommand, LancamentoDto>
 {
     public async Task<Result<LancamentoDto>> HandleAsync(RegistrarLancamentoCommand command, CancellationToken cancellationToken)
     {
@@ -70,6 +72,7 @@ public sealed class RegistrarLancamentoHandler(
         var usoNoMes = await lancamentos.ContarCriadosDesdeAsync(Calendario.InicioDoMes(agora), cancellationToken);
         if (usoNoMes >= limite)
         {
+            metricas.QuotaExcedida(codigoPlano);
             return LancamentoErros.QuotaExcedida(codigoPlano, limite);
         }
 
@@ -105,6 +108,7 @@ public sealed class RegistrarLancamentoHandler(
             throw;
         }
 
+        metricas.Registrado(lancamento);
         return LancamentoDto.De(lancamento);
     }
 

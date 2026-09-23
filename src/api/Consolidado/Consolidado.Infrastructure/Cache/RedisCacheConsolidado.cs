@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Consolidado.Application.Abstractions;
+using Consolidado.Application.Telemetria;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -14,6 +15,7 @@ namespace Consolidado.Infrastructure.Cache;
 internal sealed partial class RedisCacheConsolidado(
     IConnectionMultiplexer redis,
     DisjuntorDoCache disjuntor,
+    ConsolidadoMetricas metricas,
     ILogger<RedisCacheConsolidado> logger) : ICacheConsolidado
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -23,6 +25,7 @@ internal sealed partial class RedisCacheConsolidado(
     {
         if (!disjuntor.PermiteChamada)
         {
+            metricas.LeituraDoCache(ResultadoDoCache.Indisponivel);
             return null;
         }
 
@@ -30,10 +33,12 @@ internal sealed partial class RedisCacheConsolidado(
         {
             var valor = await redis.GetDatabase().StringGetAsync(chave);
             disjuntor.RegistrarSucesso();
+            metricas.LeituraDoCache(valor.IsNullOrEmpty ? ResultadoDoCache.Falta : ResultadoDoCache.Acerto);
             return valor.IsNullOrEmpty ? null : JsonSerializer.Deserialize<T>(valor.ToString(), Json);
         }
         catch (Exception ex) when (ex is RedisException or TimeoutException or JsonException)
         {
+            metricas.LeituraDoCache(ResultadoDoCache.Indisponivel);
             RegistrarFalha("GET", ex);
             return null;
         }

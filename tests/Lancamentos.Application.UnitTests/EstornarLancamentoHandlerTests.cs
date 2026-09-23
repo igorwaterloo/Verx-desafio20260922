@@ -14,7 +14,7 @@ public sealed class EstornarLancamentoHandlerTests
     private CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static EstornarLancamentoHandler CriarHandler(Cenario c) => new(
-        c.Lancamentos, c.Publicador, c.UnitOfWork, c.Tenancy, c.Tempo);
+        c.Lancamentos, c.Publicador, c.UnitOfWork, c.Tenancy, c.Tempo, c.Metricas);
 
     [Fact]
     public async Task Handle_UsuarioSemPapelAdmin_RetornaProibido()

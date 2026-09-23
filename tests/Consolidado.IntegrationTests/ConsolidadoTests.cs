@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -78,6 +79,35 @@ public sealed class ConsolidadoTests(AmbienteDeTeste ambiente)
 
         saldo.TotalCreditos.ShouldBe(Quantidade);
         cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(8), "a rajada deve convergir sem esperar retentativas");
+    }
+
+    [Fact]
+    public async Task Rastreamento_ConsumoContinuaOTraceDoLancamentoComOTenant()
+    {
+        // ADR-0011: o trace atravessa o RabbitMQ (traceparent no cabeçalho da mensagem) e o span do
+        // consumo carrega o tenant — um lançamento pode ser seguido da API até o saldo no Aspire.
+        var tenant = Guid.NewGuid();
+        var finalizadas = new ConcurrentBag<Activity>();
+        using var fonte = new ActivitySource("Testes.Consolidado");
+        using var ouvinte = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name is "MassTransit" or "Testes.Consolidado",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = finalizadas.Add,
+        };
+        ActivitySource.AddActivityListener(ouvinte);
+
+        ActivityTraceId trace;
+        using (var lancamento = fonte.StartActivity("POST /lancamentos")!)
+        {
+            trace = lancamento.TraceId;
+            await PublicarAsync(tenant, TipoLancamento.Credito, 10m);
+        }
+
+        await AguardarAsync(
+            () => Task.FromResult(finalizadas.Any(a => a.TraceId == trace && Equals(a.GetTagItem("tenant.id"), tenant.ToString()))),
+            "O consumo não continuou o trace da publicação com o tenant.");
+        finalizadas.ShouldContain(a => a.TraceId == trace && a.Kind == ActivityKind.Consumer);
     }
 
     [Fact]

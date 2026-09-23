@@ -1,7 +1,9 @@
 using Consolidado.Application;
+using Consolidado.Application.Telemetria;
 using Consolidado.Infrastructure;
 using Consolidado.Infrastructure.Persistence;
 using FluxoCaixa.Infrastructure.Common.Persistence;
+using FluxoCaixa.Infrastructure.Common.Telemetria;
 using FluxoCaixa.Infrastructure.Common.Web;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
@@ -9,6 +11,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 // Processo separado da Api para que a drenagem de backlog não dispute recursos com as consultas.
 // Expõe apenas health checks HTTP (liveness/readiness) para o orquestrador.
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddObservabilidade("consolidado-worker", ConsolidadoMetricas.NomeDoMedidor);
 
 builder.Services.AddTenancy();
 builder.Services.AddConsolidadoApplication();
