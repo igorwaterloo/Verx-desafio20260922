@@ -1,12 +1,16 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using Consolidado.Application.Saldos;
+using Consolidado.Application.Telemetria;
 using Consolidado.IntegrationTests.Infraestrutura;
 using FluxoCaixa.Contracts;
 using FluxoCaixa.SharedKernel;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Shouldly;
 
 namespace Consolidado.IntegrationTests;
@@ -60,15 +64,17 @@ public sealed class ConsolidadoTests(AmbienteDeTeste ambiente)
     }
 
     [Fact]
-    public async Task RajadaNoMesmoDia_EhAplicadaInteiraEmPoucosSegundos()
+    public async Task RajadaNoMesmoDia_EhAplicadaInteiraSemRetentativas()
     {
         // Caso real de pico: todos os lançamentos do comerciante caem na mesma linha (tenant + dia).
         // Consumidores concorrentes na mesma linha geravam conflitos de concorrência otimista, que iam
         // para o retry exponencial (atraso de segundos e risco de DLQ). O particionamento por
-        // tenant + data aplica essas mensagens em série, sem conflitos.
+        // tenant + data aplica essas mensagens em série, sem conflitos — logo, sem nenhuma retentativa.
         const int Quantidade = 300;
         var tenant = Guid.NewGuid();
         using var cliente = ambiente.Api.ClienteDo(tenant);
+        using var retentativas = new MetricCollector<long>(
+            ambiente.ServicosDoWorker.GetRequiredService<IMeterFactory>(), ConsolidadoMetricas.NomeDoMedidor, "consolidado.retentativas");
 
         var cronometro = Stopwatch.StartNew();
         await Task.WhenAll(Enumerable.Range(0, Quantidade)
@@ -78,7 +84,9 @@ public sealed class ConsolidadoTests(AmbienteDeTeste ambiente)
         cronometro.Stop();
 
         saldo.TotalCreditos.ShouldBe(Quantidade);
-        cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(8), "a rajada deve convergir sem esperar retentativas");
+        retentativas.GetMeasurementSnapshot().Sum(m => m.Value).ShouldBe(0, "eventos da mesma linha não podem disputar a concorrência otimista");
+        // Teto de sanidade (a cobertura de código e runners de CI deixam tudo mais lento).
+        cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -227,7 +235,9 @@ public sealed class ConsolidadoTests(AmbienteDeTeste ambiente)
 
                 resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
                 (await resposta.Content.ReadFromJsonAsync<SaldoDiarioDto>(Ct))!.TotalCreditos.ShouldBe(42m);
-                cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2));
+                // Sem o timeout de 50 ms e o disjuntor, cada operação no Redis esperaria o timeout padrão
+                // do cliente (5 s); a folga cobre execuções com cobertura de código e runners lentos.
+                cronometro.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(4));
             }
         }
         finally

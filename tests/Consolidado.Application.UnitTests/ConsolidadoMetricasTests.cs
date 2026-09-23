@@ -66,6 +66,16 @@ public sealed class ConsolidadoMetricasTests : IDisposable
         leituras.GetMeasurementSnapshot().ShouldHaveSingleItem().Tags["resultado"].ShouldBe(esperado);
     }
 
+    [Fact]
+    public void Retentativa_ContaOReprocessamento()
+    {
+        using var retentativas = new MetricCollector<long>(_medidores, ConsolidadoMetricas.NomeDoMedidor, "consolidado.retentativas");
+
+        _metricas.Retentativa();
+
+        retentativas.GetMeasurementSnapshot().ShouldHaveSingleItem().Value.ShouldBe(1);
+    }
+
     public void Dispose()
     {
         _atraso.Dispose();

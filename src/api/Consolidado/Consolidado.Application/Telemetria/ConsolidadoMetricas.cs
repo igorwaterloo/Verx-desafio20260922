@@ -13,6 +13,7 @@ public sealed class ConsolidadoMetricas
     private readonly Histogram<double> _atraso;
     private readonly Counter<long> _eventos;
     private readonly Counter<long> _leiturasDoCache;
+    private readonly Counter<long> _retentativas;
 
     public ConsolidadoMetricas(IMeterFactory fabrica)
     {
@@ -27,6 +28,8 @@ public sealed class ConsolidadoMetricas
             "consolidado.eventos", unit: "{evento}", description: "Eventos LancamentoRegistrado consumidos, por resultado.");
         _leiturasDoCache = medidor.CreateCounter<long>(
             "consolidado.cache.leituras", unit: "{leitura}", description: "Leituras do cache-aside, por resultado (ADR-0006).");
+        _retentativas = medidor.CreateCounter<long>(
+            "consolidado.retentativas", unit: "{evento}", description: "Eventos reprocessados pelo retry do consumidor (contenção ou falha de infraestrutura).");
     }
 
     public void EventoAplicado(TimeSpan atraso)
@@ -34,6 +37,9 @@ public sealed class ConsolidadoMetricas
         _atraso.Record(Math.Max(0, atraso.TotalSeconds));
         _eventos.Add(1, new KeyValuePair<string, object?>("resultado", "aplicado"));
     }
+
+    /// <summary>Evento processado de novo pelo retry (conflito de concorrência, banco indisponível etc.).</summary>
+    public void Retentativa() => _retentativas.Add(1);
 
     /// <summary>Reentrega já processada (inbox): descartada sem alterar o saldo.</summary>
     public void EventoDuplicado() => _eventos.Add(1, new KeyValuePair<string, object?>("resultado", "duplicado"));

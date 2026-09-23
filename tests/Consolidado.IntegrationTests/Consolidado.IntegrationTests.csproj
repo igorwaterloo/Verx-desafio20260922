@@ -16,6 +16,7 @@
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Testcontainers.RabbitMq" />
     <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
   </ItemGroup>
 
   <ItemGroup>
