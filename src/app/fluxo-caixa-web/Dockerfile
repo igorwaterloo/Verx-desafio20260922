@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci --no-audit --no-f
 COPY . .
 RUN npx ng build --configuration production
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS final
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS final
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker/cabecalhos-seguranca.conf /etc/nginx/seguranca/cabecalhos.conf
 COPY --chmod=755 docker/configuracao.sh /docker-entrypoint.d/15-configuracao.sh
